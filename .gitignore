@@ -1,0 +1,15 @@
+.env
+*.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
