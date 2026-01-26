@@ -40,8 +40,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Отримати відповідь від Groq
     response = await get_response(user_id, user_message)
+    
+    logger.info(f"✅ Отримано відповідь від Groq: {response[:50]}...")
 
-    await update.message.reply_text(response)
+    # Надіслати відповідь користувачу
+    try:
+        await update.message.reply_text(response)
+        logger.info(f"✅ Відповідь надіслано користувачу {user_id}")
+    except Exception as e:
+        logger.error(f"❌ Помилка надсилання відповіді: {e}", exc_info=True)
 
 
 def initialize_bot():
