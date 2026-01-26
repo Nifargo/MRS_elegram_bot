@@ -3,6 +3,7 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import asyncio
+from threading import Thread
 
 from config import TELEGRAM_TOKEN, WELCOME_MESSAGE
 from groq_client import get_response, clear_chat_history
@@ -17,8 +18,9 @@ logger = logging.getLogger(__name__)
 # Flask додаток
 app = Flask(__name__)
 
-# Telegram Application - ініціалізується при старті
+# Telegram Application
 application = None
+loop = None
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -51,23 +53,49 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"❌ Помилка надсилання відповіді: {e}", exc_info=True)
 
 
+def run_event_loop():
+    """Запустити event loop в окремому потоці."""
+    global loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
 def initialize_bot():
     """Ініціалізація бота при старті Flask."""
     global application
     
-    # Створити Application
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    # Запустити event loop в окремому потоці
+    thread = Thread(target=run_event_loop, daemon=True)
+    thread.start()
     
-    # Додати обробники
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    # Почекати поки loop створено
+    import time
+    while loop is None:
+        time.sleep(0.1)
     
-    # Ініціалізувати Application
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(application.initialize())
+    # Створити Application в event loop
+    future = asyncio.run_coroutine_threadsafe(
+        _create_application(),
+        loop
+    )
+    application = future.result()
     
     logger.info("✅ Бот ініціалізовано успішно!")
+
+
+async def _create_application():
+    """Створити і ініціалізувати Application."""
+    app_instance = Application.builder().token(TELEGRAM_TOKEN).build()
+    
+    # Додати обробники
+    app_instance.add_handler(CommandHandler("start", start))
+    app_instance.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # Ініціалізувати
+    await app_instance.initialize()
+    
+    return app_instance
 
 
 # Ініціалізувати бота при імпорті модуля
@@ -92,10 +120,11 @@ def webhook():
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
         
-        # Обробити update асинхронно
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(application.process_update(update))
+        # Обробити update в глобальному event loop
+        asyncio.run_coroutine_threadsafe(
+            application.process_update(update),
+            loop
+        )
         
         return 'OK', 200
     except Exception as e:
