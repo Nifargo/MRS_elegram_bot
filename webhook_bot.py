@@ -2,6 +2,7 @@ import logging
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import asyncio
 
 from config import TELEGRAM_TOKEN, WELCOME_MESSAGE
 from groq_client import get_response, clear_chat_history
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Flask додаток
 app = Flask(__name__)
 
-# Telegram Application - створюється без ініціалізації
+# Telegram Application
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
 
@@ -57,7 +58,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-logger.info("✅ Обробники додано до Application")
+
+# Ініціалізувати Application при старті модуля
+async def _initialize_application():
+    """Ініціалізація Application."""
+    await application.initialize()
+    logger.info("✅ Application ініціалізовано!")
+
+
+# Виконати ініціалізацію
+asyncio.run(_initialize_application())
+logger.info("✅ Бот готовий до роботи!")
 
 
 @app.route('/')
@@ -69,8 +80,6 @@ def index():
 @app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
 def webhook():
     """Обробник webhook від Telegram."""
-    import asyncio
-    
     try:
         # Отримати дані від Telegram
         json_data = request.get_json(force=True)
@@ -80,7 +89,7 @@ def webhook():
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
         
-        # Обробити update синхронно
+        # Обробити update (Application вже ініціалізований)
         asyncio.run(application.process_update(update))
         
         logger.info("✅ Webhook оброблено успішно")
@@ -93,10 +102,4 @@ def webhook():
 
 if __name__ == '__main__':
     # Для локального тестування
-    import asyncio
-    
-    async def init():
-        await application.initialize()
-        
-    asyncio.run(init())
     app.run(debug=True, port=5000)
