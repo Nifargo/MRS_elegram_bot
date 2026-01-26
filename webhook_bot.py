@@ -1,6 +1,6 @@
 import logging
 from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import asyncio
 
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # Flask додаток
 app = Flask(__name__)
 
-# Telegram Application
-application = Application.builder().token(TELEGRAM_TOKEN).build()
+# Telegram Application - ініціалізується при старті
+application = None
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -44,9 +44,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(response)
 
 
-# Додати обробники
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+def initialize_bot():
+    """Ініціалізація бота при старті Flask."""
+    global application
+    
+    # Створити Application
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    
+    # Додати обробники
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # Ініціалізувати Application
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(application.initialize())
+    
+    logger.info("✅ Бот ініціалізовано успішно!")
+
+
+# Ініціалізувати бота при імпорті модуля
+initialize_bot()
 
 
 @app.route('/')
@@ -62,15 +80,19 @@ def webhook():
         # Отримати дані від Telegram
         json_data = request.get_json(force=True)
         
+        logger.info(f"Отримано webhook: {json_data}")
+        
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
         
         # Обробити update асинхронно
-        asyncio.run(application.process_update(update))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(application.process_update(update))
         
         return 'OK', 200
     except Exception as e:
-        logger.error(f"Помилка обробки webhook: {e}")
+        logger.error(f"❌ Помилка обробки webhook: {e}", exc_info=True)
         return 'Error', 500
 
 
