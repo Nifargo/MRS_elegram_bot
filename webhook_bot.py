@@ -41,10 +41,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"📨 Повідомлення від {user_id}: {user_message}")
 
     try:
-        # Показати "друкує..."
-        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-        logger.info("⌨️ Показано 'друкує...'")
-
         # Отримати відповідь від Groq
         response = await get_response(user_id, user_message)
         logger.info(f"✅ Отримано відповідь від Groq ({len(response)} символів)")
