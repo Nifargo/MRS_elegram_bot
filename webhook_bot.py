@@ -3,9 +3,13 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import asyncio
+import nest_asyncio
 
 from config import TELEGRAM_TOKEN, WELCOME_MESSAGE
 from groq_client import get_response, clear_chat_history
+
+# Дозволити вкладені event loops
+nest_asyncio.apply()
 
 # Налаштування логування
 logging.basicConfig(
