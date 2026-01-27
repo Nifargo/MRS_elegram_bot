@@ -11,5 +11,9 @@ from dotenv import load_dotenv
 project_folder = os.path.expanduser(path)
 load_dotenv(os.path.join(project_folder, '.env'))
 
-# Імпортувати Flask додаток
-from webhook_bot import app as application
+# Імпортувати Quart додаток
+from webhook_bot import app
+
+# Конвертувати ASGI (Quart) в WSGI (PythonAnywhere)
+from a2wsgi import ASGIMiddleware
+application = ASGIMiddleware(app)

@@ -1,15 +1,10 @@
 import logging
-from flask import Flask, request
+from quart import Quart, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import asyncio
-import nest_asyncio
 
 from config import TELEGRAM_TOKEN, WELCOME_MESSAGE
 from groq_client import get_response, clear_chat_history
-
-# Дозволити вкладені event loops
-nest_asyncio.apply()
 
 # Налаштування логування
 logging.basicConfig(
@@ -18,8 +13,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Flask додаток
-app = Flask(__name__)
+# Quart додаток (асинхронний Flask)
+app = Quart(__name__)
 
 # Telegram Application
 application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -51,7 +46,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         logger.error(f"❌ Помилка в handle_message: {e}", exc_info=True)
-        await update.message.reply_text("Вибачте, сталася помилка. Спробуйте ще раз.")
+        try:
+            await update.message.reply_text("Вибачте, сталася помилка. Спробуйте ще раз.")
+        except:
+            pass
 
 
 # Додати обробники
@@ -59,38 +57,43 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 
-# Ініціалізувати Application при старті модуля
-async def _initialize_application():
-    """Ініціалізація Application."""
+# Ініціалізація при старті
+@app.before_serving
+async def startup():
+    """Ініціалізація Application при старті Quart."""
     await application.initialize()
-    logger.info("✅ Application ініціалізовано!")
+    await application.start()
+    logger.info("✅ Application ініціалізовано та запущено!")
 
 
-# Виконати ініціалізацію
-asyncio.run(_initialize_application())
-logger.info("✅ Бот готовий до роботи!")
+@app.after_serving
+async def shutdown():
+    """Зупинка Application при завершенні."""
+    await application.stop()
+    await application.shutdown()
+    logger.info("🛑 Application зупинено!")
 
 
 @app.route('/')
-def index():
+async def index():
     """Головна сторінка - перевірка що бот працює."""
     return "🐾 Mr.Snoopy Grooming Bot is running!"
 
 
 @app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
-def webhook():
+async def webhook():
     """Обробник webhook від Telegram."""
     try:
         # Отримати дані від Telegram
-        json_data = request.get_json(force=True)
+        json_data = await request.get_json(force=True)
         
         logger.info(f"📥 Отримано webhook: update_id={json_data.get('update_id')}")
         
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
         
-        # Обробити update (Application вже ініціалізований)
-        asyncio.run(application.process_update(update))
+        # Обробити update (тепер все async!)
+        await application.process_update(update)
         
         logger.info("✅ Webhook оброблено успішно")
         return 'OK', 200
