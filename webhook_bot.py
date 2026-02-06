@@ -116,16 +116,14 @@ def webhook():
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
         
-        # Обробити update в глобальному event loop
-        future = asyncio.run_coroutine_threadsafe(
+        # Обробити update в глобальному event loop (НЕ чекаємо на завершення)
+        asyncio.run_coroutine_threadsafe(
             application.process_update(update),
             loop
         )
         
-        # Почекати на завершення (timeout 10 секунд)
-        future.result(timeout=10)
-        
-        logger.info("✅ Webhook оброблено успішно")
+        # Відразу повертаємо 200 (Telegram отримає відповідь швидко)
+        logger.info("✅ Webhook прийнято")
         return 'OK', 200
         
     except Exception as e:
