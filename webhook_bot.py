@@ -22,6 +22,41 @@ app = Flask(__name__)
 # Глобальні змінні
 application = None
 loop = None
+thread = None
+_initialized = False
+
+
+def ensure_initialized():
+    """Переконатися що бот ініціалізований."""
+    global application, loop, thread, _initialized
+    
+    if _initialized:
+        return
+    
+    logger.info("🚀 Запуск ініціалізації бота...")
+    
+    # Запустити event loop
+    thread = Thread(target=run_async_loop, daemon=True)
+    thread.start()
+    
+    # Почекати поки loop створено
+    max_wait = 50  # 5 секунд
+    while loop is None and max_wait > 0:
+        time.sleep(0.1)
+        max_wait -= 1
+    
+    if loop is None:
+        logger.error("❌ Event loop не створено!")
+        raise RuntimeError("Failed to create event loop")
+    
+    logger.info("✅ Event loop створено!")
+    
+    # Ініціалізувати Application в event loop
+    future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
+    future.result(timeout=30)
+    
+    _initialized = True
+    logger.info("✅ Бот готовий до роботи!")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -84,24 +119,41 @@ async def initialize_application():
 
 
 # Запустити event loop в окремому потоці
-thread = Thread(target=run_async_loop, daemon=True)
-thread.start()
+def _startup():
+    """Ініціалізація при імпорті модуля."""
+    global thread, loop, application
+    
+    logger.info("🚀 Запуск ініціалізації бота...")
+    
+    # Запустити event loop
+    thread = Thread(target=run_async_loop, daemon=True)
+    thread.start()
+    
+    # Почекати поки loop створено
+    while loop is None:
+        time.sleep(0.1)
+    
+    logger.info("✅ Event loop створено!")
+    
+    # Ініціалізувати Application в event loop
+    future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
+    future.result()
+    
+    logger.info("✅ Бот готовий до роботи!")
 
-# Почекати поки loop створено
-while loop is None:
-    time.sleep(0.1)
-
-# Ініціалізувати Application в event loop
-future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
-future.result()
-
-logger.info("✅ Бот готовий до роботи!")
+# Виконати ініціалізацію
+_startup()
 
 
 @app.route('/')
 def index():
     """Головна сторінка - перевірка що бот працює."""
-    return "🐾 Mr.Snoopy Grooming Bot is running!"
+    try:
+        ensure_initialized()
+        return "🐾 Mr.Snoopy Grooming Bot is running!"
+    except Exception as e:
+        logger.error(f"❌ Помилка ініціалізації: {e}", exc_info=True)
+        return f"Error: {e}", 500
 
 
 @app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
