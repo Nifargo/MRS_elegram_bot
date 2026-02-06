@@ -1,7 +1,10 @@
 import logging
-from quart import Quart, request
+from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import asyncio
+from threading import Thread
+import time
 
 from config import TELEGRAM_TOKEN, WELCOME_MESSAGE
 from groq_client import get_response, clear_chat_history
@@ -13,11 +16,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Quart додаток (асинхронний Flask)
-app = Quart(__name__)
+# Flask додаток
+app = Flask(__name__)
 
-# Telegram Application
-application = Application.builder().token(TELEGRAM_TOKEN).build()
+# Глобальні змінні
+application = None
+loop = None
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -52,48 +56,74 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
 
-# Додати обробники
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+def run_async_loop():
+    """Запустити event loop в окремому потоці."""
+    global loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    logger.info("🔄 Event loop запущено в окремому потоці")
+    loop.run_forever()
 
 
-# Ініціалізація при старті
-@app.before_serving
-async def startup():
-    """Ініціалізація Application при старті Quart."""
+async def initialize_application():
+    """Ініціалізувати Telegram Application."""
+    global application
+    
+    # Створити Application
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    
+    # Додати обробники
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # Ініціалізувати
     await application.initialize()
     await application.start()
-    logger.info("✅ Application ініціалізовано та запущено!")
+    
+    logger.info("✅ Telegram Application ініціалізовано!")
 
 
-@app.after_serving
-async def shutdown():
-    """Зупинка Application при завершенні."""
-    await application.stop()
-    await application.shutdown()
-    logger.info("🛑 Application зупинено!")
+# Запустити event loop в окремому потоці
+thread = Thread(target=run_async_loop, daemon=True)
+thread.start()
+
+# Почекати поки loop створено
+while loop is None:
+    time.sleep(0.1)
+
+# Ініціалізувати Application в event loop
+future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
+future.result()
+
+logger.info("✅ Бот готовий до роботи!")
 
 
 @app.route('/')
-async def index():
+def index():
     """Головна сторінка - перевірка що бот працює."""
     return "🐾 Mr.Snoopy Grooming Bot is running!"
 
 
 @app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
-async def webhook():
+def webhook():
     """Обробник webhook від Telegram."""
     try:
         # Отримати дані від Telegram
-        json_data = await request.get_json(force=True)
+        json_data = request.get_json(force=True)
         
         logger.info(f"📥 Отримано webhook: update_id={json_data.get('update_id')}")
         
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
         
-        # Обробити update (тепер все async!)
-        await application.process_update(update)
+        # Обробити update в глобальному event loop
+        future = asyncio.run_coroutine_threadsafe(
+            application.process_update(update),
+            loop
+        )
+        
+        # Почекати на завершення (timeout 10 секунд)
+        future.result(timeout=10)
         
         logger.info("✅ Webhook оброблено успішно")
         return 'OK', 200

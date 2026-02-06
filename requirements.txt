@@ -1,5 +1,4 @@
 python-telegram-bot==21.0
 groq>=1.0.0
 python-dotenv==1.0.1
-quart==0.19.4
-a2wsgi==1.10.4
+Flask==3.0.0
