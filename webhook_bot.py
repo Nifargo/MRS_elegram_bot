@@ -23,40 +23,6 @@ app = Flask(__name__)
 application = None
 loop = None
 thread = None
-_initialized = False
-
-
-def ensure_initialized():
-    """Переконатися що бот ініціалізований."""
-    global application, loop, thread, _initialized
-    
-    if _initialized:
-        return
-    
-    logger.info("🚀 Запуск ініціалізації бота...")
-    
-    # Запустити event loop
-    thread = Thread(target=run_async_loop, daemon=True)
-    thread.start()
-    
-    # Почекати поки loop створено
-    max_wait = 50  # 5 секунд
-    while loop is None and max_wait > 0:
-        time.sleep(0.1)
-        max_wait -= 1
-    
-    if loop is None:
-        logger.error("❌ Event loop не створено!")
-        raise RuntimeError("Failed to create event loop")
-    
-    logger.info("✅ Event loop створено!")
-    
-    # Ініціалізувати Application в event loop
-    future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
-    future.result(timeout=30)
-    
-    _initialized = True
-    logger.info("✅ Бот готовий до роботи!")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,7 +48,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Надіслати відповідь користувачу
         await update.message.reply_text(response)
         logger.info(f"✅ Відповідь надіслано користувачу {user_id}")
-        
+
     except Exception as e:
         logger.error(f"❌ Помилка в handle_message: {e}", exc_info=True)
         try:
@@ -97,52 +63,84 @@ def run_async_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     logger.info("🔄 Event loop запущено в окремому потоці")
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    except Exception as e:
+        logger.error(f"❌ Event loop впав: {e}", exc_info=True)
+    finally:
+        loop = None
+        logger.warning("⚠️ Event loop зупинено!")
 
 
 async def initialize_application():
     """Ініціалізувати Telegram Application."""
     global application
-    
+
     # Створити Application
     application = Application.builder().token(TELEGRAM_TOKEN).build()
-    
+
     # Додати обробники
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
+
     # Ініціалізувати
     await application.initialize()
     await application.start()
-    
+
     logger.info("✅ Telegram Application ініціалізовано!")
 
 
-# Запустити event loop в окремому потоці
-def _startup():
-    """Ініціалізація при імпорті модуля."""
-    global thread, loop, application
-    
+def _is_loop_alive():
+    """Перевірити чи event loop живий і працює."""
+    return (
+        loop is not None
+        and thread is not None
+        and thread.is_alive()
+        and loop.is_running()
+    )
+
+
+def ensure_initialized():
+    """Переконатись що бот ініціалізований. Перезапускає якщо event loop помер."""
+    global application, loop, thread
+
+    if application is not None and _is_loop_alive():
+        return True
+
+    # Скинути стан якщо loop помер
+    if loop is not None or application is not None:
+        logger.warning("⚠️ Event loop помер! Перезапускаю...")
+        application = None
+        loop = None
+        thread = None
+
     logger.info("🚀 Запуск ініціалізації бота...")
-    
-    # Запустити event loop
+
+    # Запустити event loop в окремому потоці
     thread = Thread(target=run_async_loop, daemon=True)
     thread.start()
-    
-    # Почекати поки loop створено
-    while loop is None:
-        time.sleep(0.1)
-    
-    logger.info("✅ Event loop створено!")
-    
-    # Ініціалізувати Application в event loop
-    future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
-    future.result()
-    
-    logger.info("✅ Бот готовий до роботи!")
 
-# Виконати ініціалізацію
-_startup()
+    # Почекати поки loop створено
+    timeout = 10
+    start_time = time.time()
+    while loop is None and (time.time() - start_time) < timeout:
+        time.sleep(0.1)
+
+    if loop is None:
+        logger.error("❌ Event loop не створився за 10 секунд!")
+        return False
+
+    logger.info("✅ Event loop створено!")
+
+    # Ініціалізувати Application в event loop
+    try:
+        future = asyncio.run_coroutine_threadsafe(initialize_application(), loop)
+        future.result(timeout=30)
+        logger.info("✅ Бот готовий до роботи!")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Помилка ініціалізації Application: {e}", exc_info=True)
+        return False
 
 
 @app.route('/')
@@ -160,24 +158,44 @@ def index():
 def webhook():
     """Обробник webhook від Telegram."""
     try:
+        # Переконатись що бот ініціалізований (3 спроби)
+        initialized = False
+        for attempt in range(1, 4):
+            if ensure_initialized():
+                initialized = True
+                break
+            logger.warning(f"⚠️ Спроба ініціалізації {attempt}/3 не вдалась, чекаю 2с...")
+            time.sleep(2)
+
+        if not initialized:
+            logger.error("❌ Бот не ініціалізований після 3 спроб, webhook відхилено")
+            return 'Bot not initialized', 503
+
         # Отримати дані від Telegram
         json_data = request.get_json(force=True)
-        
+
         logger.info(f"📥 Отримано webhook: update_id={json_data.get('update_id')}")
-        
+
         # Створити Update об'єкт
         update = Update.de_json(json_data, application.bot)
-        
-        # Обробити update в глобальному event loop (НЕ чекаємо на завершення)
-        asyncio.run_coroutine_threadsafe(
+
+        # Обробити update в event loop
+        future = asyncio.run_coroutine_threadsafe(
             application.process_update(update),
             loop
         )
-        
-        # Відразу повертаємо 200 (Telegram отримає відповідь швидко)
-        logger.info("✅ Webhook прийнято")
+
+        # Почекати на результат (макс 25 сек, Telegram дає 60)
+        try:
+            future.result(timeout=25)
+        except TimeoutError:
+            logger.warning("⚠️ Обробка webhook перевищила таймаут 25с")
+        except Exception as e:
+            logger.error(f"❌ Помилка обробки update: {e}", exc_info=True)
+
+        logger.info("✅ Webhook оброблено")
         return 'OK', 200
-        
+
     except Exception as e:
         logger.error(f"❌ Помилка обробки webhook: {e}", exc_info=True)
         return 'Error', 500
