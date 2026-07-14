@@ -86,6 +86,16 @@ def create_client(company_id: str, name: str, phone: str) -> dict:
     return _request("POST", f"clients/{company_id}", json=payload)["data"]
 
 
+def get_client(company_id: str, client_id: int) -> dict:
+    """Дані клієнта Altegio за id (name, phone, comment, ...)."""
+    return _request("GET", f"client/{company_id}/{client_id}")["data"]
+
+
+def update_client(company_id: str, client_id: int, fields: dict) -> dict:
+    """Оновити поля клієнта в Altegio (name, phone, comment, ...)."""
+    return _request("PUT", f"client/{company_id}/{client_id}", json=fields)["data"]
+
+
 # --- Записи ---
 
 def get_client_records(company_id: str, client_id: int) -> list[dict]:

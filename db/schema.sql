@@ -6,6 +6,7 @@ create table if not exists clients (
     id                bigint generated always as identity primary key,
     tg_user_id         bigint not null unique,
     altegio_client_id  bigint,
+    altegio_company_id text,
     phone              text,
     name               text,
     registration_done  boolean not null default false,

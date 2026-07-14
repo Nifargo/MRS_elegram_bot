@@ -1,14 +1,13 @@
 import logging
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application
 import asyncio
 from threading import Thread
 import time
 
-from config import TELEGRAM_TOKEN, WELCOME_MESSAGE, CRON_SECRET
-from groq_client import get_response, clear_chat_history
-from handlers.menu import MAIN_MENU, is_menu_button, handle_menu_button
+from config import TELEGRAM_TOKEN, CRON_SECRET
+from handlers.setup import register_handlers
 from services import scheduler
 
 # Налаштування логування
@@ -25,42 +24,6 @@ app = Flask(__name__)
 application = None
 loop = None
 thread = None
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробник команди /start."""
-    user_id = update.effective_user.id
-    clear_chat_history(user_id)
-    await update.message.reply_text(WELCOME_MESSAGE, reply_markup=MAIN_MENU)
-    logger.info(f"✅ Надіслано привітання користувачу {user_id}")
-
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробник текстових повідомлень."""
-    user_id = update.effective_user.id
-    user_message = update.message.text
-
-    logger.info(f"📨 Повідомлення від {user_id}: {user_message}")
-
-    if is_menu_button(user_message):
-        await handle_menu_button(update, context)
-        return
-
-    try:
-        # Отримати відповідь від Groq
-        response = await get_response(user_id, user_message)
-        logger.info(f"✅ Отримано відповідь від Groq ({len(response)} символів)")
-
-        # Надіслати відповідь користувачу
-        await update.message.reply_text(response)
-        logger.info(f"✅ Відповідь надіслано користувачу {user_id}")
-
-    except Exception as e:
-        logger.error(f"❌ Помилка в handle_message: {e}", exc_info=True)
-        try:
-            await update.message.reply_text("Вибачте, сталася помилка. Спробуйте ще раз.")
-        except:
-            pass
 
 
 def run_async_loop():
@@ -85,9 +48,8 @@ async def initialize_application():
     # Створити Application
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Додати обробники
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    # Додати обробники (спільні з bot.py)
+    register_handlers(application)
 
     # Ініціалізувати
     await application.initialize()
