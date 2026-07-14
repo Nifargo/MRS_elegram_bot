@@ -6,8 +6,10 @@ import asyncio
 from threading import Thread
 import time
 
-from config import TELEGRAM_TOKEN, WELCOME_MESSAGE
+from config import TELEGRAM_TOKEN, WELCOME_MESSAGE, CRON_SECRET
 from groq_client import get_response, clear_chat_history
+from handlers.menu import MAIN_MENU, is_menu_button, handle_menu_button
+from services import scheduler
 
 # Налаштування логування
 logging.basicConfig(
@@ -29,7 +31,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробник команди /start."""
     user_id = update.effective_user.id
     clear_chat_history(user_id)
-    await update.message.reply_text(WELCOME_MESSAGE)
+    await update.message.reply_text(WELCOME_MESSAGE, reply_markup=MAIN_MENU)
     logger.info(f"✅ Надіслано привітання користувачу {user_id}")
 
 
@@ -39,6 +41,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
 
     logger.info(f"📨 Повідомлення від {user_id}: {user_message}")
+
+    if is_menu_button(user_message):
+        await handle_menu_button(update, context)
+        return
 
     try:
         # Отримати відповідь від Groq
@@ -198,6 +204,30 @@ def webhook():
 
     except Exception as e:
         logger.error(f"❌ Помилка обробки webhook: {e}", exc_info=True)
+        return 'Error', 500
+
+
+@app.route(f'/cron/{CRON_SECRET}', methods=['POST'])
+def cron():
+    """Викликається зовнішнім планувальником (cron-job.org / PythonAnywhere Scheduled Task)."""
+    try:
+        sent_count = scheduler.run_due()
+        return {'processed': sent_count}, 200
+    except Exception as e:
+        logger.error(f"❌ Помилка cron-диспетчера: {e}", exc_info=True)
+        return 'Error', 500
+
+
+@app.route('/altegio/webhook', methods=['POST'])
+def altegio_webhook():
+    """Приймає події від Altegio (запис створено/змінено/видалено)."""
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        logger.info(f"📥 Altegio webhook: {payload}")
+        # TODO: обробка запису в tracked_records (Фаза 2)
+        return 'OK', 200
+    except Exception as e:
+        logger.error(f"❌ Помилка обробки Altegio webhook: {e}", exc_info=True)
         return 'Error', 500
 
 
