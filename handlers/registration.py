@@ -9,6 +9,7 @@ import logging
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -33,12 +34,10 @@ logger = logging.getLogger(__name__)
 (PHONE, LOCATION, NAME, PET_NAME, PET_BREED, PET_BIRTH, PET_WEIGHT, PET_ALLERGIES,
  PET_BEHAVIOR, PET_PHOTO, ADD_MORE) = range(11)
 
-BTN_SKIP = "⏭ Пропустити"
 BTN_SHARE_PHONE = "📱 Поділитись номером"
 BTN_ADD_MORE = "➕ Додати ще одного"
 BTN_FINISH = "✅ Завершити"
 
-SKIP_KB = ReplyKeyboardMarkup([[BTN_SKIP]], resize_keyboard=True)
 PHONE_KB = ReplyKeyboardMarkup(
     [[KeyboardButton(BTN_SHARE_PHONE, request_contact=True)]],
     resize_keyboard=True,
@@ -182,6 +181,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return PET_NAME
 
 
+async def add_pet_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Callback «➕ Додати улюбленця» зі списку улюбленців (клієнт вже зареєстрований)."""
+    query = update.callback_query
+    await query.answer()
+
+    client = db.get_client_by_tg_id(update.effective_user.id)
+    if client is None or not client["registration_done"]:
+        await query.message.reply_text("Спочатку заповнимо коротку анкету — надішліть /start 🐾")
+        return ConversationHandler.END
+
+    context.user_data["client_id"] = client["id"]
+    context.user_data["pet"] = {}
+    context.user_data["adding_extra_pet"] = True
+
+    await query.message.reply_text("Як звати улюбленця?", reply_markup=ReplyKeyboardRemove())
+    return PET_NAME
+
+
 async def got_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.contact.phone_number if update.message.contact else update.message.text
     phone = normalize_phone(raw)
@@ -258,76 +275,77 @@ async def got_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def got_pet_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["pet"] = {"name": update.message.text.strip()}
+    name = update.message.text.strip()
+    if not name:
+        await update.message.reply_text("Напишіть, будь ласка, ім'я улюбленця.")
+        return PET_NAME
+    context.user_data["pet"] = {"name": name}
     _save_draft(context)
-    await update.message.reply_text("Яка порода?", reply_markup=SKIP_KB)
+    await update.message.reply_text("Яка порода?", reply_markup=ReplyKeyboardRemove())
     return PET_BREED
 
 
 async def got_pet_breed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != BTN_SKIP:
-        context.user_data["pet"]["breed"] = update.message.text.strip()
-        _save_draft(context)
-    await update.message.reply_text(
-        "Дата народження? (ДД.ММ.РРРР, напр. 15.03.2022)", reply_markup=SKIP_KB
-    )
+    breed = update.message.text.strip()
+    if not breed:
+        await update.message.reply_text("Напишіть, будь ласка, породу.")
+        return PET_BREED
+    context.user_data["pet"]["breed"] = breed
+    _save_draft(context)
+    await update.message.reply_text("Дата народження? (ДД.ММ.РРРР, напр. 15.03.2022)")
     return PET_BIRTH
 
 
 async def got_pet_birth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != BTN_SKIP:
-        birth = parse_date(update.message.text)
-        if birth is None:
-            await update.message.reply_text(
-                "Не розпізнав дату 😔 Формат: ДД.ММ.РРРР (напр. 15.03.2022), "
-                "і дата не може бути в майбутньому.",
-                reply_markup=SKIP_KB,
-            )
-            return PET_BIRTH
-        context.user_data["pet"]["birth_date"] = birth.isoformat()
-        _save_draft(context)
-    await update.message.reply_text("Вага в кг? (напр. 4.5)", reply_markup=SKIP_KB)
+    birth = parse_date(update.message.text)
+    if birth is None:
+        await update.message.reply_text(
+            "Не розпізнав дату 😔 Формат: ДД.ММ.РРРР (напр. 15.03.2022), "
+            "і дата не може бути в майбутньому."
+        )
+        return PET_BIRTH
+    context.user_data["pet"]["birth_date"] = birth.isoformat()
+    _save_draft(context)
+    await update.message.reply_text("Вага в кг? (напр. 4.5)")
     return PET_WEIGHT
 
 
 async def got_pet_weight(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != BTN_SKIP:
-        weight = parse_weight(update.message.text)
-        if weight is None:
-            await update.message.reply_text(
-                "Не розпізнав вагу 😔 Напишіть число в кг, напр. 4.5",
-                reply_markup=SKIP_KB,
-            )
-            return PET_WEIGHT
-        context.user_data["pet"]["weight"] = weight
-        _save_draft(context)
-    await update.message.reply_text("Чи є алергії? Якщо так — опишіть.", reply_markup=SKIP_KB)
+    weight = parse_weight(update.message.text)
+    if weight is None:
+        await update.message.reply_text("Не розпізнав вагу 😔 Напишіть число в кг, напр. 4.5")
+        return PET_WEIGHT
+    context.user_data["pet"]["weight"] = weight
+    _save_draft(context)
+    await update.message.reply_text("Чи є алергії? Якщо немає — напишіть «немає».")
     return PET_ALLERGIES
 
 
 async def got_pet_allergies(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != BTN_SKIP:
-        context.user_data["pet"]["allergies"] = update.message.text.strip()
-        _save_draft(context)
+    allergies = update.message.text.strip()
+    if not allergies:
+        await update.message.reply_text("Напишіть, будь ласка, чи є алергії (або «немає»).")
+        return PET_ALLERGIES
+    context.user_data["pet"]["allergies"] = allergies
+    _save_draft(context)
     await update.message.reply_text(
-        "Особливості поведінки? (боїться фена, не любить чужих тощо)",
-        reply_markup=SKIP_KB,
+        "Особливості поведінки? (боїться фена, не любить чужих тощо; якщо немає — напишіть «немає»)"
     )
     return PET_BEHAVIOR
 
 
 async def got_pet_behavior(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != BTN_SKIP:
-        context.user_data["pet"]["behavior_notes"] = update.message.text.strip()
-        _save_draft(context)
+    behavior = update.message.text.strip()
+    if not behavior:
+        await update.message.reply_text("Напишіть, будь ласка, особливості поведінки (або «немає»).")
+        return PET_BEHAVIOR
+    context.user_data["pet"]["behavior_notes"] = behavior
+    _save_draft(context)
     return await _ask_pet_photo(update)
 
 
 async def _ask_pet_photo(update: Update) -> int:
-    await update.message.reply_text(
-        "І останнє — фото улюбленця для картки 📸 (або пропустіть).",
-        reply_markup=SKIP_KB,
-    )
+    await update.message.reply_text("І останнє — фото улюбленця для картки 📸")
     return PET_PHOTO
 
 
@@ -336,13 +354,9 @@ async def got_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return await _finish_pet(update, context)
 
 
-async def skip_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != BTN_SKIP:
-        await update.message.reply_text(
-            "Надішліть фото або натисніть «Пропустити».", reply_markup=SKIP_KB
-        )
-        return PET_PHOTO
-    return await _finish_pet(update, context)
+async def invalid_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Будь ласка, надішліть фото улюбленця 📸")
+    return PET_PHOTO
 
 
 async def _finish_pet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -377,12 +391,15 @@ async def got_add_more(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             "registration_done": True,
             "draft_json": None,
         })
-        await update.message.reply_text(
-            "Дякую, анкета заповнена! 💛\n"
-            "Тепер можна записуватись на грумінг, дивитись картки улюбленців "
-            "і питати мене про догляд.",
-            reply_markup=MAIN_MENU,
-        )
+        if context.user_data.pop("adding_extra_pet", False):
+            await update.message.reply_text("Улюбленця додано! 🐾", reply_markup=MAIN_MENU)
+        else:
+            await update.message.reply_text(
+                "Дякую, анкета заповнена! 💛\n"
+                "Тепер можна записуватись на грумінг, дивитись картки улюбленців "
+                "і питати мене про догляд.",
+                reply_markup=MAIN_MENU,
+            )
         return ConversationHandler.END
 
     await update.message.reply_text("Оберіть варіант кнопкою нижче 🙂", reply_markup=ADD_MORE_KB)
@@ -400,7 +417,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 _TEXT = filters.TEXT & ~filters.COMMAND
 
 conversation = ConversationHandler(
-    entry_points=[CommandHandler("start", start)],
+    entry_points=[
+        CommandHandler("start", start),
+        CallbackQueryHandler(add_pet_start, pattern=r"^pet_add$"),
+    ],
     states={
         PHONE: [MessageHandler(filters.CONTACT | _TEXT, got_phone)],
         LOCATION: [MessageHandler(_TEXT, got_location)],
@@ -413,7 +433,7 @@ conversation = ConversationHandler(
         PET_BEHAVIOR: [MessageHandler(_TEXT, got_pet_behavior)],
         PET_PHOTO: [
             MessageHandler(filters.PHOTO, got_pet_photo),
-            MessageHandler(_TEXT, skip_pet_photo),
+            MessageHandler(_TEXT, invalid_pet_photo),
         ],
         ADD_MORE: [MessageHandler(_TEXT, got_add_more)],
     },

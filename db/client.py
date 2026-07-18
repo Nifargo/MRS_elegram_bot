@@ -58,6 +58,11 @@ def update_pet(pet_id: int, fields: dict) -> dict:
     return result.data[0]
 
 
+def delete_pet(pet_id: int) -> None:
+    """Видалити картку улюбленця."""
+    supabase.table("pets").delete().eq("id", pet_id).execute()
+
+
 # --- Сповіщення ---
 
 def create_notification(client_id: int, type: str, send_after: str, payload: dict | None = None) -> dict:

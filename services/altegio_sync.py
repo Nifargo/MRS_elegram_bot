@@ -54,17 +54,16 @@ def sync_pets_comment(client: dict) -> bool:
         return False
 
     pets = db.get_pets_by_client(client["id"])
-    if not pets:
-        return False
-
-    pets_block = "\n".join(_pet_line(p) for p in pets)
+    pets_block = "\n".join(_pet_line(p) for p in pets) if pets else "(немає)"
 
     try:
         remote = altegio.get_client(company_id, altegio_client_id)
         comment = _merge_comment(remote.get("comment") or "", pets_block)
         altegio.update_client(company_id, altegio_client_id, {
-            # ім'я не чіпаємо — передаємо те, що вже стоїть в Altegio
+            # ім'я і телефон не чіпаємо — Altegio вимагає їх при PUT навіть
+            # якщо міняється лише коментар, тож передаємо те, що вже стоїть
             "name": remote.get("name") or client.get("name") or "",
+            "phone": remote.get("phone") or (client.get("phone") or "").lstrip("+"),
             "comment": comment,
         })
         return True

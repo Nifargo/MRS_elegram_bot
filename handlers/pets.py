@@ -78,16 +78,24 @@ def _card_text(pet: dict) -> str:
 
 
 def _list_keyboard(pets: list[dict]) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [[InlineKeyboardButton(f"🐾 {pet['name']}", callback_data=f"pet_show:{pet['id']}")]
-         for pet in pets]
-    )
+    rows = [[InlineKeyboardButton(f"🐾 {pet['name']}", callback_data=f"pet_show:{pet['id']}")]
+            for pet in pets]
+    rows.append([InlineKeyboardButton("➕ Додати улюбленця", callback_data="pet_add")])
+    return InlineKeyboardMarkup(rows)
 
 
 def _card_keyboard(pet_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("✏️ Редагувати", callback_data=f"pet_edit:{pet_id}")],
+        [InlineKeyboardButton("🗑 Видалити", callback_data=f"pet_delete:{pet_id}")],
         [InlineKeyboardButton("⬅️ До списку", callback_data="pet_list")],
+    ])
+
+
+def _delete_confirm_keyboard(pet_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Так, видалити", callback_data=f"pet_delete_confirm:{pet_id}")],
+        [InlineKeyboardButton("❌ Скасувати", callback_data=f"pet_show:{pet_id}")],
     ])
 
 
@@ -157,6 +165,23 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             f"Що змінити у картці «{pet['name']}»?",
             reply_markup=_edit_keyboard(pet["id"]),
         )
+    elif action == "pet_delete":
+        await query.message.reply_text(
+            f"Точно видалити картку «{pet['name']}»? Це незворотньо.",
+            reply_markup=_delete_confirm_keyboard(pet["id"]),
+        )
+    elif action == "pet_delete_confirm":
+        db.delete_pet(pet["id"])
+        client = db.get_client_by_id(pet["client_id"])
+        if client:
+            altegio_sync.sync_pets_comment(client)
+
+        await query.message.reply_text(f"🗑 «{pet['name']}» видалено.")
+        pets = db.get_pets_by_client(pet["client_id"])
+        if pets:
+            await query.message.reply_text("Ваші улюбленці:", reply_markup=_list_keyboard(pets))
+        else:
+            await query.message.reply_text("У вас поки немає доданих улюбленців.")
 
 
 # --- Редагування поля (ConversationHandler) ---
