@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from config import ADMIN_CHAT_IDS, TELEGRAM_TOKEN
+from config import ADMIN_GROUP_CHAT_ID, ADMIN_TOPIC_ID, TELEGRAM_TOKEN
 from db import client as db
 
 logger = logging.getLogger(__name__)
@@ -21,14 +21,13 @@ FORM_INCOMPLETE_HOUR = 21  # о котрій годині (Київ) нагад�
 _API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 
-def send_telegram_message(chat_id: int, text: str) -> bool:
+def send_telegram_message(chat_id: int, text: str, message_thread_id: int | None = None) -> bool:
     """Надіслати повідомлення напряму через Bot API. Повертає True при успіху."""
+    payload = {"chat_id": chat_id, "text": text}
+    if message_thread_id is not None:
+        payload["message_thread_id"] = message_thread_id
     try:
-        response = requests.post(
-            f"{_API_URL}/sendMessage",
-            json={"chat_id": chat_id, "text": text},
-            timeout=15,
-        )
+        response = requests.post(f"{_API_URL}/sendMessage", json=payload, timeout=15)
         if not response.ok:
             logger.error(f"Telegram sendMessage {chat_id}: HTTP {response.status_code} {response.text[:200]}")
             return False
@@ -39,24 +38,22 @@ def send_telegram_message(chat_id: int, text: str) -> bool:
 
 
 def notify_admins(text: str) -> bool:
-    """Надіслати повідомлення всім адміністраторам. True, якщо дійшло хоч одному."""
-    if not ADMIN_CHAT_IDS:
-        logger.warning("ADMIN_CHAT_IDS порожній — сповіщення адмінам нікуди слати")
+    """Надіслати повідомлення в адмін-топік групи. True, якщо дійшло."""
+    if not ADMIN_GROUP_CHAT_ID:
+        logger.warning("ADMIN_GROUP_CHAT_ID не задано — сповіщення адмінам нікуди слати")
         return False
-    delivered = [send_telegram_message(chat_id, text) for chat_id in ADMIN_CHAT_IDS]
-    return any(delivered)
+    return send_telegram_message(ADMIN_GROUP_CHAT_ID, text, message_thread_id=ADMIN_TOPIC_ID)
 
 
 async def notify_admins_async(bot, text: str) -> None:
     """Те саме, але з async-хендлера — через bot, щоб не блокувати event loop."""
-    if not ADMIN_CHAT_IDS:
-        logger.warning("ADMIN_CHAT_IDS порожній — сповіщення адмінам нікуди слати")
+    if not ADMIN_GROUP_CHAT_ID:
+        logger.warning("ADMIN_GROUP_CHAT_ID не задано — сповіщення адмінам нікуди слати")
         return
-    for chat_id in ADMIN_CHAT_IDS:
-        try:
-            await bot.send_message(chat_id=chat_id, text=text)
-        except Exception as e:
-            logger.error(f"Не вдалося сповістити адміна {chat_id}: {e}")
+    try:
+        await bot.send_message(chat_id=ADMIN_GROUP_CHAT_ID, text=text, message_thread_id=ADMIN_TOPIC_ID)
+    except Exception as e:
+        logger.error(f"Не вдалося сповістити адмін-топік {ADMIN_GROUP_CHAT_ID}: {e}")
 
 
 def schedule_form_incomplete(client_id: int) -> None:

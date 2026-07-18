@@ -99,7 +99,7 @@
 - Стан ConversationHandler in-memory; чернетка анкети додатково в БД (`draft_json`), щоб рестарт не втрачав прогрес.
 
 ### Ролі
-- `ADMIN_CHAT_IDS` у `.env` — сповіщення (низька оцінка, незаповнена анкета, "потрібна допомога").
+- `ADMIN_GROUP_CHAT_ID` + `ADMIN_TOPIC_ID` у `.env` — усі сповіщення (низька оцінка, незаповнена анкета, "потрібна допомога") летять одним повідомленням у топік адмін-групи.
 - Адмін-функції в боті — мінімальні (фото до/після, рекомендації майстра). Все інше адміністратор робить в Altegio.
 
 ### Нова структура файлів
@@ -108,7 +108,7 @@
 grooming-telegram-bot/
 ├── webhook_bot.py          # Flask: telegram webhook + /cron + /altegio/webhook (тонкий)
 ├── bot.py                  # polling для локальної розробки
-├── config.py               # + ALTEGIO_*, ADMIN_CHAT_IDS, CRON_SECRET, GOOGLE_MAPS_REVIEW_URL
+├── config.py               # + ALTEGIO_*, ADMIN_GROUP_CHAT_ID/ADMIN_TOPIC_ID, CRON_SECRET, GOOGLE_MAPS_REVIEW_URL
 ├── groq_client.py          # AI-помічник (+ function calling поверх Altegio)
 ├── db/
 │   ├── schema.sql          # SQL-схема таблиць (виконується в Supabase SQL Editor)
@@ -178,7 +178,7 @@ Telegram-фото зберігаємо як `file_id` (Telegram тримає ф�
 1. **Отримати доступи Altegio**: partner token, user token, company_id філій. Перевірити 4 питання з блоку "Перевірити на старті".
 2. `services/altegio.py` — клієнт API: `get_locations()`, `get_services()`, `get_free_dates/times()`, `create_record()`, `get_client_records()`, `move_record()`, `cancel_record()`, `find_client_by_phone()`, `create_client()`, `get_loyalty_balance()`. Обробка помилок і rate limits в одному місці.
 3. **Supabase**: створити безкоштовний проєкт → виконати `db/schema.sql` у SQL Editor → залежність `supabase` у `requirements.txt` → `db/client.py` з функціями доступу. Перевірити з PythonAnywhere, що REST-запити до `*.supabase.co` проходять (див. ризик №5).
-4. `config.py`: + `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALTEGIO_PARTNER_TOKEN`, `ALTEGIO_USER_TOKEN`, `ALTEGIO_COMPANY_IDS`, `ADMIN_CHAT_IDS`, `CRON_SECRET`, `GOOGLE_MAPS_REVIEW_URL`.
+4. `config.py`: + `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALTEGIO_PARTNER_TOKEN`, `ALTEGIO_USER_TOKEN`, `ALTEGIO_COMPANY_IDS`, `ADMIN_GROUP_CHAT_ID`, `ADMIN_TOPIC_ID`, `CRON_SECRET`, `GOOGLE_MAPS_REVIEW_URL`.
 5. Endpoint `POST /cron/<CRON_SECRET>` → `services/scheduler.run_due()`.
 6. Endpoint `POST /altegio/webhook` → обробка record created/updated/deleted → оновлення `tracked_records` + перепланування нагадувань. Налаштувати вебхук в Altegio (Settings → System settings → WebHook).
 7. Налаштувати cron (PythonAnywhere Scheduled Task або cron-job.org) кожні 10–15 хв.
@@ -201,8 +201,8 @@ Telegram-фото зберігаємо як `file_id` (Telegram тримає ф�
 - ✅ Рефакторинг: єдина реєстрація handler-ів у `handlers/setup.py` для webhook_bot.py і bot.py
 
 **Лишилось до ✅:**
-- ⬜ Виконати `db/migrations/001_phase1_altegio_company_id.sql` у Supabase SQL Editor
-- ⬜ `ADMIN_CHAT_IDS` у `.env` на PythonAnywhere → деплой (git pull + Reload web app)
+- ✅ Виконано `db/migrations/001_phase1_altegio_company_id.sql` у Supabase SQL Editor (колонка `altegio_company_id` у `clients`)
+- ✅ `ADMIN_GROUP_CHAT_ID` + `ADMIN_TOPIC_ID` у `.env` на PythonAnywhere → Reload web app (лог чистий, бот стартував без помилок)
 - ⬜ Перевірити, що cron-job.org б'є в `/cron/<CRON_SECRET>` кожні 10–15 хв
 - ⬜ Живий прогін критерію готовності (новий клієнт → з'являється в Altegio; давній → знайдений без дубліката; пуші адмінам приходять)
 
@@ -322,7 +322,7 @@ Telegram-фото зберігаємо як `file_id` (Telegram тримає ф�
 ### ⬜ Фаза 9 — Зв'язок з адміністратором
 
 Маленька, можна будь-коли після Фази 0:
-- `🆘 Допомога` → "Опишіть питання" → пересилання всім `ADMIN_CHAT_IDS` з ім'ям/телефоном клієнта.
+- `🆘 Допомога` → "Опишіть питання" → пересилання в адмін-топік (`notify_admins`) з ім'ям/телефоном клієнта.
 - Адмін відповідає **reply-ем** → бот доставляє відповідь клієнту (мапінг `forwarded_msg_id → client_id` у БД).
 
 **Критерій готовності:** двосторонній діалог клієнт ↔ адмін через бота.
@@ -388,7 +388,7 @@ Telegram-фото зберігаємо як `file_id` (Telegram тримає ф�
 ## Чекліст оновлень існуючих файлів
 
 - `requirements.txt`: + `supabase`, `requests` (або `httpx`)
-- `config.py`: + `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALTEGIO_PARTNER_TOKEN`, `ALTEGIO_USER_TOKEN`, `ALTEGIO_COMPANY_IDS`, `ADMIN_CHAT_IDS`, `CRON_SECRET`, `GOOGLE_MAPS_REVIEW_URL`
+- `config.py`: + `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALTEGIO_PARTNER_TOKEN`, `ALTEGIO_USER_TOKEN`, `ALTEGIO_COMPANY_IDS`, `ADMIN_GROUP_CHAT_ID`, `ADMIN_TOPIC_ID`, `CRON_SECRET`, `GOOGLE_MAPS_REVIEW_URL`
 - `.env`: + нові секрети
 - `webhook_bot.py`: нові handler-и, `/cron` і `/altegio/webhook` endpoints (файл лишається тонким)
 - `bot.py`: ті самі handler-и для локального polling-тестування

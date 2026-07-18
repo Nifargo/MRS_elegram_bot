@@ -24,10 +24,10 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 # Внутрішній секрет для /cron ендпоінта (викликається зовнішнім планувальником)
 CRON_SECRET = os.getenv("CRON_SECRET")
 
-# Telegram chat_id адміністраторів, яким летять сповіщення
-ADMIN_CHAT_IDS = [
-    int(chat_id) for chat_id in os.getenv("ADMIN_CHAT_IDS", "").split(",") if chat_id.strip()
-]
+# Група адмінів: усі сповіщення (новий користувач, незаповнена анкета тощо)
+# летять одним повідомленням у конкретний топік супергрупи.
+ADMIN_GROUP_CHAT_ID = int(os.getenv("ADMIN_GROUP_CHAT_ID")) if os.getenv("ADMIN_GROUP_CHAT_ID") else None
+ADMIN_TOPIC_ID = int(os.getenv("ADMIN_TOPIC_ID")) if os.getenv("ADMIN_TOPIC_ID") else None
 
 SYSTEM_PROMPT = """
 Ти - досвідчений консультант грумінг-салону "Mr.Snoopy Grooming".
