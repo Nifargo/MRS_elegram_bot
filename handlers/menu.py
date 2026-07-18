@@ -3,6 +3,7 @@ from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 BTN_BOOK = "📅 Записатись"
+BTN_PRICE = "💰 Дізнатись вартість"
 BTN_MY_BOOKINGS = "🗓 Мої записи"
 BTN_MY_PETS = "🐾 Мої улюбленці"
 BTN_HISTORY = "✂️ Історія"
@@ -12,17 +13,18 @@ BTN_HELP = "🆘 Допомога"
 
 MAIN_MENU = ReplyKeyboardMarkup(
     [
-        [BTN_BOOK, BTN_MY_BOOKINGS],
-        [BTN_MY_PETS, BTN_HISTORY],
-        [BTN_BONUSES, BTN_AI],
-        [BTN_HELP],
+        [BTN_BOOK, BTN_PRICE],
+        [BTN_MY_BOOKINGS, BTN_MY_PETS],
+        [BTN_HISTORY, BTN_BONUSES],
+        [BTN_AI, BTN_HELP],
     ],
     resize_keyboard=True,
 )
 
 # Кнопки, чий функціонал ще не реалізовано (наступні фази плану).
 # BTN_MY_PETS обробляється в handlers/pets.py (Фаза 1).
-_PLACEHOLDER_BUTTONS = {BTN_BOOK, BTN_MY_BOOKINGS, BTN_HISTORY, BTN_BONUSES, BTN_HELP}
+# BTN_BOOK/BTN_PRICE обробляються в handlers/booking.py (Фаза 2).
+_PLACEHOLDER_BUTTONS = {BTN_MY_BOOKINGS, BTN_HISTORY, BTN_BONUSES, BTN_HELP}
 
 
 def is_menu_button(text: str) -> bool:

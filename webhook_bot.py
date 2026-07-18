@@ -6,9 +6,9 @@ import asyncio
 from threading import Thread
 import time
 
-from config import TELEGRAM_TOKEN, CRON_SECRET
+from config import TELEGRAM_TOKEN, CRON_SECRET, ALTEGIO_WEBHOOK_SECRET
 from handlers.setup import register_handlers
-from services import scheduler
+from services import altegio_webhook, scheduler
 
 # Налаштування логування
 logging.basicConfig(
@@ -180,17 +180,13 @@ def cron():
         return 'Error', 500
 
 
-@app.route('/altegio/webhook', methods=['POST'])
-def altegio_webhook():
+@app.route(f'/altegio/webhook/{ALTEGIO_WEBHOOK_SECRET}', methods=['POST'])
+def altegio_webhook_route():
     """Приймає події від Altegio (запис створено/змінено/видалено)."""
-    try:
-        payload = request.get_json(force=True, silent=True) or {}
-        logger.info(f"📥 Altegio webhook: {payload}")
-        # TODO: обробка запису в tracked_records (Фаза 2)
-        return 'OK', 200
-    except Exception as e:
-        logger.error(f"❌ Помилка обробки Altegio webhook: {e}", exc_info=True)
-        return 'Error', 500
+    payload = request.get_json(force=True, silent=True) or {}
+    altegio_webhook.process_event(payload)
+    # Завжди 200 — Altegio ретраїть на не-200, помилки обробки вже залоговано всередині.
+    return 'OK', 200
 
 
 if __name__ == '__main__':

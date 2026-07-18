@@ -32,6 +32,12 @@ def get_client_by_id(client_id: int) -> dict | None:
     return result.data[0] if result.data else None
 
 
+def get_client_by_phone(phone: str) -> dict | None:
+    """Знайти клієнта за телефоном (формат +380XXXXXXXXX). Для матчингу Altegio-вебхуків."""
+    result = supabase.table("clients").select("*").eq("phone", phone).limit(1).execute()
+    return result.data[0] if result.data else None
+
+
 # --- Улюбленці ---
 
 def create_pet(client_id: int, fields: dict) -> dict:
@@ -61,6 +67,33 @@ def update_pet(pet_id: int, fields: dict) -> dict:
 def delete_pet(pet_id: int) -> None:
     """Видалити картку улюбленця."""
     supabase.table("pets").delete().eq("id", pet_id).execute()
+
+
+# --- Записи (кеш для нагадувань, Фаза 2+) ---
+
+def get_tracked_record(altegio_record_id: int) -> dict | None:
+    """Кешований запис за id з Altegio. None, якщо ще не синхронізований."""
+    result = (
+        supabase.table("tracked_records")
+        .select("*")
+        .eq("altegio_record_id", altegio_record_id)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+def upsert_tracked_record(fields: dict) -> dict:
+    """Створити або оновити кеш запису (fields повинні містити altegio_record_id)."""
+    result = supabase.table("tracked_records").upsert(fields, on_conflict="altegio_record_id").execute()
+    return result.data[0]
+
+
+def update_tracked_record_status(altegio_record_id: int, status: str) -> None:
+    """Позначити статус запису (напр. cancelled при скасуванні в Altegio)."""
+    supabase.table("tracked_records").update({"status": status}).eq(
+        "altegio_record_id", altegio_record_id
+    ).execute()
 
 
 # --- Сповіщення ---

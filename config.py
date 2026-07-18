@@ -24,6 +24,9 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 # Внутрішній секрет для /cron ендпоінта (викликається зовнішнім планувальником)
 CRON_SECRET = os.getenv("CRON_SECRET")
 
+# Внутрішній секрет для /altegio/webhook ендпоінта (URL реєструється в Altegio)
+ALTEGIO_WEBHOOK_SECRET = os.getenv("ALTEGIO_WEBHOOK_SECRET")
+
 # Група адмінів: усі сповіщення (новий користувач, незаповнена анкета тощо)
 # летять одним повідомленням у конкретний топік супергрупи.
 ADMIN_GROUP_CHAT_ID = int(os.getenv("ADMIN_GROUP_CHAT_ID")) if os.getenv("ADMIN_GROUP_CHAT_ID") else None

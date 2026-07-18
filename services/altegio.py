@@ -50,26 +50,49 @@ def get_services(company_id: str) -> list[dict]:
     return _request("GET", f"book_services/{company_id}")["data"]["services"]
 
 
-def get_staff(company_id: str) -> list[dict]:
-    """Список майстрів, доступних для онлайн-запису."""
-    return _request("GET", f"book_staff/{company_id}")["data"]
+def get_staff(company_id: str, service_ids: list[int] = None) -> list[dict]:
+    """Список майстрів, доступних для онлайн-запису (опційно — лише кваліфіковані на service_ids)."""
+    params = {"service_ids[]": service_ids} if service_ids else None
+    return _request("GET", f"book_staff/{company_id}", params=params)["data"]
+
+
+def get_service_categories(company_id: str) -> list[dict]:
+    """Категорії послуг (тип послуги × рівень грумера), кожна з полем staff (id майстрів)."""
+    return _request("GET", f"service_categories/{company_id}")["data"]
 
 
 def get_available_dates(company_id: str, staff_id: int = None, service_ids: list[int] = None) -> list[str]:
-    """Дати з вільними слотами (staff_id=0 — будь-який майстер)."""
+    """Дати з вільними слотами (staff_id=0 — об'єднана доступність по всіх майстрах)."""
     params = {}
     if service_ids:
         params["service_ids[]"] = service_ids
-    path = f"book_dates/{company_id}"
-    if staff_id:
-        path = f"book_dates/{company_id}"
+    if staff_id is not None:
         params["staff_id"] = staff_id
-    return _request("GET", path, params=params)["data"]["booking_dates"]
+    return _request("GET", f"book_dates/{company_id}", params=params)["data"]["booking_dates"]
 
 
-def get_available_times(company_id: str, staff_id: int, date: str) -> list[dict]:
-    """Вільні часи на конкретну дату (date у форматі YYYY-MM-DD)."""
-    return _request("GET", f"book_times/{company_id}/{staff_id}/{date}")["data"]
+def get_available_times(company_id: str, staff_id: int, date: str, service_ids: list[int] = None) -> list[dict]:
+    """Вільні часи на конкретну дату (date у форматі YYYY-MM-DD).
+
+    service_ids обов'язково впливає на тривалість слотів — без нього повертаються
+    часи для іншої (дефолтної) послуги.
+    """
+    params = {"service_ids[]": service_ids} if service_ids else None
+    return _request("GET", f"book_times/{company_id}/{staff_id}/{date}", params=params)["data"]
+
+
+def find_available_staff_for_slot(company_id: str, service_id: int, date: str, time_str: str) -> int | None:
+    """Знайти конкретного майстра, у якого вільний саме цей час (для create_record —
+
+    там staff_id=0 не підтверджений документацією, тож на підтвердженні запису
+    резолвимо «будь-якого майстра» у конкретного, перебираючи кваліфікованих.
+    """
+    staff = get_staff(company_id, service_ids=[service_id])
+    for member in staff:
+        times = get_available_times(company_id, member["id"], date, service_ids=[service_id])
+        if any(t["time"] == time_str for t in times):
+            return member["id"]
+    return None
 
 
 # --- Клієнти ---
