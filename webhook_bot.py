@@ -111,29 +111,29 @@ def ensure_initialized():
         return False
 
 
+def ensure_initialized_with_retries(attempts: int = 3) -> bool:
+    """ensure_initialized() з повторами - проксі PythonAnywhere інколи віддає 503."""
+    for attempt in range(1, attempts + 1):
+        if ensure_initialized():
+            return True
+        logger.warning(f"⚠️ Спроба ініціалізації {attempt}/{attempts} не вдалась, чекаю 2с...")
+        time.sleep(2)
+    return False
+
+
 @app.route('/')
 def index():
     """Головна сторінка - перевірка що бот працює."""
-    try:
-        ensure_initialized()
-        return "🐾 Mr.Snoopy Grooming Bot is running!"
-    except Exception as e:
-        logger.error(f"❌ Помилка ініціалізації: {e}", exc_info=True)
-        return f"Error: {e}", 500
+    if not ensure_initialized_with_retries():
+        return "Bot not initialized", 503
+    return "🐾 Mr.Snoopy Grooming Bot is running!"
 
 
 @app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
 def webhook():
     """Обробник webhook від Telegram."""
     try:
-        # Переконатись що бот ініціалізований (3 спроби)
-        initialized = False
-        for attempt in range(1, 4):
-            if ensure_initialized():
-                initialized = True
-                break
-            logger.warning(f"⚠️ Спроба ініціалізації {attempt}/3 не вдалась, чекаю 2с...")
-            time.sleep(2)
+        initialized = ensure_initialized_with_retries()
 
         if not initialized:
             logger.error("❌ Бот не ініціалізований після 3 спроб, webhook відхилено")
