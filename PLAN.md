@@ -205,7 +205,7 @@ Telegram-фото зберігаємо як `file_id` (Telegram тримає ф�
 **Лишилось до ✅:**
 - ✅ Виконано `db/migrations/001_phase1_altegio_company_id.sql` у Supabase SQL Editor (колонка `altegio_company_id` у `clients`)
 - ✅ `ADMIN_GROUP_CHAT_ID` + `ADMIN_TOPIC_ID` у `.env` на PythonAnywhere → Reload web app (лог чистий, бот стартував без помилок)
-- ⬜ Перевірити, що cron-job.org б'є в `/cron/<CRON_SECRET>` кожні 10–15 хв
+- ✅ cron-job.org налаштовано: job "Mr.Snoopy Bot - scheduler dispatch" кожні 15 хв, POST на `/cron/<CRON_SECRET>`, тестовий запуск підтвердив 200 OK від продакшена
 - ⬜ Живий прогін критерію готовності (новий клієнт → з'являється в Altegio; давній → знайдений без дубліката; пуші адмінам приходять)
 
 **Флоу анкети (ConversationHandler):**
