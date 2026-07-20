@@ -29,6 +29,7 @@ from telegram.ext import ContextTypes
 
 from config import ALTEGIO_LOCATIONS
 from db import client as db
+from handlers.common import with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio
 from services.altegio import AltegioError
@@ -142,12 +143,12 @@ def _service_row(service: dict) -> list[InlineKeyboardButton]:
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str) -> None:
     client = db.get_client_by_tg_id(update.effective_user.id)
     if client is None or not client["registration_done"]:
-        await update.message.reply_text("Спочатку заповнимо коротку анкету — надішліть /start 🐾")
+        await with_retry(update.message.reply_text, "Спочатку заповнимо коротку анкету — надішліть /start 🐾")
         return
 
     pets = db.get_pets_by_client(client["id"])
     if not pets:
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Спершу додайте улюбленця: надішліть /start або скористайтесь кнопкою «🐾 Мої улюбленці»."
         )
         return
@@ -158,7 +159,7 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str) 
         context.user_data["booking"]["pet"] = pets[0]
         await _ask_location(update.message, context)
     else:
-        await update.message.reply_text("Кого записуємо? 🐾", reply_markup=_pet_keyboard(pets))
+        await with_retry(update.message.reply_text, "Кого записуємо? 🐾", reply_markup=_pet_keyboard(pets))
 
 
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -174,7 +175,7 @@ async def price_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 # --- Кроки флоу ---
 
 async def _ask_location(message, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await message.reply_text("В якій локації? 📍", reply_markup=_location_keyboard())
+    await with_retry(message.reply_text, "В якій локації? 📍", reply_markup=_location_keyboard())
 
 
 async def _show_location_card(message, company_id: str) -> None:
@@ -189,11 +190,11 @@ async def _show_location_card(message, company_id: str) -> None:
         lines.append(company["address"])
     if company.get("phone"):
         lines.append(f"☎️ {company['phone']}")
-    await message.reply_text("\n".join(lines))
+    await with_retry(message.reply_text, "\n".join(lines))
 
     lat, lon = company.get("coordinate_lat"), company.get("coordinate_lon")
     if lat and lon:
-        await message.reply_location(latitude=float(lat), longitude=float(lon))
+        await with_retry(message.reply_location, latitude=float(lat), longitude=float(lon))
 
 
 async def _ask_category(message, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -202,14 +203,14 @@ async def _ask_category(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         categories = altegio.get_service_categories(b["company_id"])
     except AltegioError as e:
         logger.error(f"Altegio категорії {b['company_id']}: {e}")
-        await message.reply_text("Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text, "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
         return
 
     if not categories:
-        await message.reply_text("У цій локації поки немає послуг для онлайн-запису 😔")
+        await with_retry(message.reply_text, "У цій локації поки немає послуг для онлайн-запису 😔")
         return
 
-    await message.reply_text("Яка послуга цікавить? 🐩", reply_markup=_category_keyboard(categories))
+    await with_retry(message.reply_text, "Яка послуга цікавить? 🐩", reply_markup=_category_keyboard(categories))
 
 
 async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -218,7 +219,7 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         services = altegio.get_services(b["company_id"])
     except AltegioError as e:
         logger.error(f"Altegio послуги {b['company_id']}: {e}")
-        await message.reply_text("Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text, "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
         return
 
     cat_services = sorted(
@@ -226,7 +227,7 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         key=lambda s: s["title"],
     )
     if not cat_services:
-        await message.reply_text("У цій категорії немає доступних послуг 😔")
+        await with_retry(message.reply_text, "У цій категорії немає доступних послуг 😔")
         return
 
     b["services"] = cat_services
@@ -239,7 +240,7 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         rows = [_service_row(s) for s in matches]
         rows.append([InlineKeyboardButton(f"📋 Показати всі ({len(cat_services)})", callback_data="bk_all:0")])
         rows.append([CANCEL_BUTTON])
-        await message.reply_text(
+        await with_retry(message.reply_text,
             f"Схоже на «{pet['name']}» ({breed}):",
             reply_markup=InlineKeyboardMarkup(rows),
         )
@@ -253,7 +254,7 @@ async def _show_service_page(message, context: ContextTypes.DEFAULT_TYPE, page: 
     start = page * PAGE_SIZE_SVC
     chunk = services[start:start + PAGE_SIZE_SVC]
     if not chunk:
-        await message.reply_text("Послуг не знайдено 😔")
+        await with_retry(message.reply_text, "Послуг не знайдено 😔")
         return
 
     rows = [_service_row(s) for s in chunk]
@@ -267,7 +268,7 @@ async def _show_service_page(message, context: ContextTypes.DEFAULT_TYPE, page: 
     rows.append([CANCEL_BUTTON])
 
     total_pages = (len(services) - 1) // PAGE_SIZE_SVC + 1
-    await message.reply_text(
+    await with_retry(message.reply_text,
         f"Оберіть послугу (стор. {page + 1}/{total_pages}):",
         reply_markup=InlineKeyboardMarkup(rows),
     )
@@ -277,7 +278,7 @@ async def _select_service(message, context: ContextTypes.DEFAULT_TYPE, service_i
     b = context.user_data["booking"]
     service = next((s for s in b.get("services", []) if s["id"] == service_id), None)
     if service is None:
-        await message.reply_text("Не знайшов цю послугу 😔 Спробуйте ще раз.")
+        await with_retry(message.reply_text, "Не знайшов цю послугу 😔 Спробуйте ще раз.")
         return
     b["service"] = service
 
@@ -287,7 +288,7 @@ async def _select_service(message, context: ContextTypes.DEFAULT_TYPE, service_i
             [InlineKeyboardButton("📅 Записатись", callback_data="bk_toproceed")],
             [InlineKeyboardButton("❌ Закрити", callback_data="bk_cancel")],
         ])
-        await message.reply_text(text, reply_markup=kb)
+        await with_retry(message.reply_text, text, reply_markup=kb)
         return
 
     await _ask_date(message, context)
@@ -299,11 +300,11 @@ async def _ask_date(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         dates = altegio.get_available_dates(b["company_id"], staff_id=0, service_ids=[b["service"]["id"]])
     except AltegioError as e:
         logger.error(f"Altegio дати {b['company_id']}: {e}")
-        await message.reply_text("Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text, "Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘.")
         return
 
     if not dates:
-        await message.reply_text("На жаль, немає вільних дат найближчим часом. Зверніться 🆘 до адміністратора.")
+        await with_retry(message.reply_text, "На жаль, немає вільних дат найближчим часом. Зверніться 🆘 до адміністратора.")
         return
 
     b["dates"] = dates
@@ -316,7 +317,7 @@ async def _show_date_page(message, context: ContextTypes.DEFAULT_TYPE, page: int
     start = page * PAGE_SIZE_DATE
     chunk = dates[start:start + PAGE_SIZE_DATE]
     if not chunk:
-        await message.reply_text("Дат не знайдено 😔")
+        await with_retry(message.reply_text, "Дат не знайдено 😔")
         return
 
     rows = [
@@ -332,7 +333,7 @@ async def _show_date_page(message, context: ContextTypes.DEFAULT_TYPE, page: int
         rows.append(nav)
     rows.append([CANCEL_BUTTON])
 
-    await message.reply_text("Оберіть дату 📅:", reply_markup=InlineKeyboardMarkup(rows))
+    await with_retry(message.reply_text, "Оберіть дату 📅:", reply_markup=InlineKeyboardMarkup(rows))
 
 
 async def _ask_time(message, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -341,12 +342,12 @@ async def _ask_time(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         times = altegio.get_available_times(b["company_id"], 0, b["date"], service_ids=[b["service"]["id"]])
     except AltegioError as e:
         logger.error(f"Altegio час {b['company_id']} {b['date']}: {e}")
-        await message.reply_text("Не вдалося завантажити вільний час 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text, "Не вдалося завантажити вільний час 😔 Спробуйте пізніше або зверніться 🆘.")
         return
 
     time_strs = [t["time"] for t in times]
     if not time_strs:
-        await message.reply_text("На цю дату вже немає вільного часу 😔 Оберіть іншу дату.")
+        await with_retry(message.reply_text, "На цю дату вже немає вільного часу 😔 Оберіть іншу дату.")
         await _show_date_page(message, context, 0)
         return
 
@@ -355,7 +356,7 @@ async def _ask_time(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         for i in range(0, len(time_strs), 4)
     ]
     rows.append([CANCEL_BUTTON])
-    await message.reply_text("Оберіть час 🕐:", reply_markup=InlineKeyboardMarkup(rows))
+    await with_retry(message.reply_text, "Оберіть час 🕐:", reply_markup=InlineKeyboardMarkup(rows))
 
 
 async def _show_confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -373,7 +374,7 @@ async def _show_confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton("✅ Підтвердити", callback_data="bk_confirm")],
         [CANCEL_BUTTON],
     ])
-    await message.reply_text(text, reply_markup=kb)
+    await with_retry(message.reply_text, text, reply_markup=kb)
 
 
 def _resolve_altegio_client_id(client: dict, company_id: str) -> int | None:
@@ -411,18 +412,18 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         staff_id = altegio.find_available_staff_for_slot(company_id, service["id"], date_str, time_str)
     except AltegioError as e:
         logger.error(f"Altegio пошук майстра {company_id}: {e}")
-        await message.reply_text("Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
+        await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
         return
 
     if staff_id is None:
-        await message.reply_text("На жаль, цей час щойно зайняли 😔 Оберіть інший час.")
+        await with_retry(message.reply_text, "На жаль, цей час щойно зайняли 😔 Оберіть інший час.")
         await _ask_time(message, context)
         return
 
     client = db.get_client_by_id(b["client_id"])
     altegio_client_id = _resolve_altegio_client_id(client, company_id)
     if altegio_client_id is None:
-        await message.reply_text("Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора.")
+        await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора.")
         return
 
     comment_parts = [pet["name"]]
@@ -443,7 +444,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
     except AltegioError as e:
         logger.error(f"Не вдалося створити запис: {e}")
-        await message.reply_text("Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘.")
+        await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘.")
         return
 
     location_name = _location_name(company_id)
@@ -462,7 +463,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error(f"Не вдалося зберегти tracked_record {record.get('id')}: {e}")
 
     d = date.fromisoformat(date_str)
-    await message.reply_text(
+    await with_retry(message.reply_text,
         "🎉 Записано!\n"
         f"🐾 {pet['name']} · {service['title']}\n"
         f"📍 {location_name}\n"
@@ -481,12 +482,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if data == "bk_cancel":
         context.user_data.pop("booking", None)
-        await query.message.reply_text("Скасовано.", reply_markup=MAIN_MENU)
+        await with_retry(query.message.reply_text, "Скасовано.", reply_markup=MAIN_MENU)
         return
 
     b = context.user_data.get("booking")
     if b is None:
-        await query.message.reply_text(
+        await with_retry(query.message.reply_text,
             "Сесію запису втрачено — почніть спочатку кнопкою «📅 Записатись»."
         )
         return
@@ -496,7 +497,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if action == "bk_pet":
         pet = db.get_pet(int(rest))
         if pet is None or pet["client_id"] != b["client_id"]:
-            await query.message.reply_text("Не знайшов улюбленця 😔")
+            await with_retry(query.message.reply_text, "Не знайшов улюбленця 😔")
             return
         b["pet"] = pet
         await _ask_location(query.message, context)

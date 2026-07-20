@@ -20,7 +20,7 @@ from telegram.ext import (
 from config import ALTEGIO_LOCATIONS, WELCOME_MESSAGE
 from db import client as db
 from groq_client import clear_chat_history
-from handlers.common import normalize_phone, parse_date, parse_weight
+from handlers.common import normalize_phone, parse_date, parse_weight, with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio, altegio_sync
 from services.altegio import AltegioError
@@ -149,13 +149,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
 
     if client["registration_done"]:
-        await update.message.reply_text(WELCOME_MESSAGE, reply_markup=MAIN_MENU)
+        await with_retry(update.message.reply_text, WELCOME_MESSAGE, reply_markup=MAIN_MENU)
         return ConversationHandler.END
 
     context.user_data["client_id"] = client["id"]
     context.user_data["pet"] = {}
 
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         "Вітаю в Mr.Snoopy Grooming! 🐾\n"
         "Давайте знайомитись — це займе пару хвилин, і я зможу записувати "
         "ваших улюбленців на грумінг."
@@ -163,7 +163,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # Продовжуємо з того кроку, якого ще бракує (рестарт не втрачає прогрес)
     if not client.get("phone"):
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Поділіться номером телефону — за ним ми знайдемо вас у базі салону.",
             reply_markup=PHONE_KB,
         )
@@ -171,10 +171,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not client.get("altegio_company_id"):
         return await _ask_location(update)
     if not client.get("name"):
-        await update.message.reply_text("Як вас звати?", reply_markup=ReplyKeyboardRemove())
+        await with_retry(update.message.reply_text, "Як вас звати?", reply_markup=ReplyKeyboardRemove())
         return NAME
     _ensure_altegio_link(client)  # раптом минулого разу Altegio був недоступний
-    await update.message.reply_text(
+
+    existing_pets = db.get_pets_by_client(client["id"])
+    if existing_pets:
+        names = ", ".join(p["name"] for p in existing_pets)
+        await with_retry(update.message.reply_text,
+            f"Продовжимо анкету 🐶 Улюбленці, яких ви вже додали: {names}.\nДодати ще одного?",
+            reply_markup=ADD_MORE_KB,
+        )
+        return ADD_MORE
+
+    await with_retry(update.message.reply_text,
         "Продовжимо анкету 🐶 Як звати вашого улюбленця?",
         reply_markup=ReplyKeyboardRemove(),
     )
@@ -188,14 +198,14 @@ async def add_pet_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     client = db.get_client_by_tg_id(update.effective_user.id)
     if client is None or not client["registration_done"]:
-        await query.message.reply_text("Спочатку заповнимо коротку анкету — надішліть /start 🐾")
+        await with_retry(query.message.reply_text, "Спочатку заповнимо коротку анкету — надішліть /start 🐾")
         return ConversationHandler.END
 
     context.user_data["client_id"] = client["id"]
     context.user_data["pet"] = {}
     context.user_data["adding_extra_pet"] = True
 
-    await query.message.reply_text("Як звати улюбленця?", reply_markup=ReplyKeyboardRemove())
+    await with_retry(query.message.reply_text, "Як звати улюбленця?", reply_markup=ReplyKeyboardRemove())
     return PET_NAME
 
 
@@ -203,7 +213,7 @@ async def got_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     raw = update.message.contact.phone_number if update.message.contact else update.message.text
     phone = normalize_phone(raw)
     if phone is None:
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Не розпізнав номер 😔 Надішліть у форматі +380XXXXXXXXX або "
             "натисніть кнопку нижче.",
             reply_markup=PHONE_KB,
@@ -215,7 +225,7 @@ async def got_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def _ask_location(update: Update) -> int:
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         "В якій локації вам зручніше обслуговуватись? 📍",
         reply_markup=LOCATION_KB,
     )
@@ -226,7 +236,7 @@ async def got_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     location_name = update.message.text.strip()
     company_id = ALTEGIO_LOCATIONS.get(location_name)
     if not company_id:
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Оберіть локацію кнопкою нижче 🙂", reply_markup=LOCATION_KB
         )
         return LOCATION
@@ -236,7 +246,7 @@ async def got_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     # Салони працюють давно — спершу шукаємо клієнта в існуючій базі Altegio.
     found, _ = _search_altegio_client(client)
     if found and found.get("name"):
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             f"Знайшов вас у базі салону — {found['name']}, раді бачити знову! 💛\n"
             "Про вас ми вже знаємо, а от про ваших улюбленців — ще ні.\n"
             "Розкажіть про них: як звати вашого улюбленця?",
@@ -245,13 +255,13 @@ async def got_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return PET_NAME
 
     if found:
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Знайшов вас у базі салону 💛 Як вас звати?",
             reply_markup=ReplyKeyboardRemove(),
         )
         return NAME
 
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         f"Чудово, {location_name} 📍 Як вас звати?",
         reply_markup=ReplyKeyboardRemove(),
     )
@@ -261,13 +271,13 @@ async def got_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def got_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     name = update.message.text.strip()
     if not name:
-        await update.message.reply_text("Напишіть, будь ласка, ваше ім'я.")
+        await with_retry(update.message.reply_text, "Напишіть, будь ласка, ваше ім'я.")
         return NAME
 
     client = db.update_client(context.user_data["client_id"], {"name": name})
     _ensure_altegio_link(client)
 
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         f"Приємно познайомитись, {name}! Тепер розкажіть про вашого улюбленця.\n"
         "Як його звати?",
     )
@@ -277,58 +287,58 @@ async def got_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def got_pet_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     name = update.message.text.strip()
     if not name:
-        await update.message.reply_text("Напишіть, будь ласка, ім'я улюбленця.")
+        await with_retry(update.message.reply_text, "Напишіть, будь ласка, ім'я улюбленця.")
         return PET_NAME
     context.user_data["pet"] = {"name": name}
     _save_draft(context)
-    await update.message.reply_text("Яка порода?", reply_markup=ReplyKeyboardRemove())
+    await with_retry(update.message.reply_text, "Яка порода?", reply_markup=ReplyKeyboardRemove())
     return PET_BREED
 
 
 async def got_pet_breed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     breed = update.message.text.strip()
     if not breed:
-        await update.message.reply_text("Напишіть, будь ласка, породу.")
+        await with_retry(update.message.reply_text, "Напишіть, будь ласка, породу.")
         return PET_BREED
     context.user_data["pet"]["breed"] = breed
     _save_draft(context)
-    await update.message.reply_text("Дата народження? (ДД.ММ.РРРР, напр. 15.03.2022)")
+    await with_retry(update.message.reply_text, "Дата народження? (ДД.ММ.РРРР, напр. 15.03.2022)")
     return PET_BIRTH
 
 
 async def got_pet_birth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     birth = parse_date(update.message.text)
     if birth is None:
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Не розпізнав дату 😔 Формат: ДД.ММ.РРРР (напр. 15.03.2022), "
             "і дата не може бути в майбутньому."
         )
         return PET_BIRTH
     context.user_data["pet"]["birth_date"] = birth.isoformat()
     _save_draft(context)
-    await update.message.reply_text("Вага в кг? (напр. 4.5)")
+    await with_retry(update.message.reply_text, "Вага в кг? (напр. 4.5)")
     return PET_WEIGHT
 
 
 async def got_pet_weight(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     weight = parse_weight(update.message.text)
     if weight is None:
-        await update.message.reply_text("Не розпізнав вагу 😔 Напишіть число в кг, напр. 4.5")
+        await with_retry(update.message.reply_text, "Не розпізнав вагу 😔 Напишіть число в кг, напр. 4.5")
         return PET_WEIGHT
     context.user_data["pet"]["weight"] = weight
     _save_draft(context)
-    await update.message.reply_text("Чи є алергії? Якщо немає — напишіть «немає».")
+    await with_retry(update.message.reply_text, "Чи є алергії? Якщо немає — напишіть «немає».")
     return PET_ALLERGIES
 
 
 async def got_pet_allergies(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     allergies = update.message.text.strip()
     if not allergies:
-        await update.message.reply_text("Напишіть, будь ласка, чи є алергії (або «немає»).")
+        await with_retry(update.message.reply_text, "Напишіть, будь ласка, чи є алергії (або «немає»).")
         return PET_ALLERGIES
     context.user_data["pet"]["allergies"] = allergies
     _save_draft(context)
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         "Особливості поведінки? (боїться фена, не любить чужих тощо; якщо немає — напишіть «немає»)"
     )
     return PET_BEHAVIOR
@@ -337,7 +347,7 @@ async def got_pet_allergies(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def got_pet_behavior(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     behavior = update.message.text.strip()
     if not behavior:
-        await update.message.reply_text("Напишіть, будь ласка, особливості поведінки (або «немає»).")
+        await with_retry(update.message.reply_text, "Напишіть, будь ласка, особливості поведінки (або «немає»).")
         return PET_BEHAVIOR
     context.user_data["pet"]["behavior_notes"] = behavior
     _save_draft(context)
@@ -345,7 +355,7 @@ async def got_pet_behavior(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def _ask_pet_photo(update: Update) -> int:
-    await update.message.reply_text("І останнє — фото улюбленця для картки 📸")
+    await with_retry(update.message.reply_text, "І останнє — фото улюбленця для картки 📸")
     return PET_PHOTO
 
 
@@ -355,7 +365,7 @@ async def got_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def invalid_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Будь ласка, надішліть фото улюбленця 📸")
+    await with_retry(update.message.reply_text, "Будь ласка, надішліть фото улюбленця 📸")
     return PET_PHOTO
 
 
@@ -372,7 +382,7 @@ async def _finish_pet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     if client:
         altegio_sync.sync_pets_comment(client)
 
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         f"🎉 {pet['name']} у списку ваших улюбленців!\nДодати ще одного?",
         reply_markup=ADD_MORE_KB,
     )
@@ -381,7 +391,7 @@ async def _finish_pet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def got_add_more(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == BTN_ADD_MORE:
-        await update.message.reply_text(
+        await with_retry(update.message.reply_text,
             "Як звати улюбленця?", reply_markup=ReplyKeyboardRemove()
         )
         return PET_NAME
@@ -392,9 +402,9 @@ async def got_add_more(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             "draft_json": None,
         })
         if context.user_data.pop("adding_extra_pet", False):
-            await update.message.reply_text("Улюбленця додано! 🐾", reply_markup=MAIN_MENU)
+            await with_retry(update.message.reply_text, "Улюбленця додано! 🐾", reply_markup=MAIN_MENU)
         else:
-            await update.message.reply_text(
+            await with_retry(update.message.reply_text,
                 "Дякую, анкета заповнена! 💛\n"
                 "Тепер можна записуватись на грумінг, дивитись картки улюбленців "
                 "і питати мене про догляд.",
@@ -402,12 +412,12 @@ async def got_add_more(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             )
         return ConversationHandler.END
 
-    await update.message.reply_text("Оберіть варіант кнопкою нижче 🙂", reply_markup=ADD_MORE_KB)
+    await with_retry(update.message.reply_text, "Оберіть варіант кнопкою нижче 🙂", reply_markup=ADD_MORE_KB)
     return ADD_MORE
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text(
+    await with_retry(update.message.reply_text,
         "Добре, зупинив анкету. Продовжити можна будь-коли — просто надішліть /start.",
         reply_markup=MAIN_MENU,
     )

@@ -1,6 +1,12 @@
 """Спільні валідатори полів анкети та карток улюбленців."""
+import asyncio
+import logging
 import re
 from datetime import date, datetime
+
+from telegram.error import NetworkError
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_phone(raw: str) -> str | None:
@@ -33,3 +39,23 @@ def parse_weight(text: str) -> float | None:
     if not 0.1 <= weight <= 120:
         return None
     return round(weight, 2)
+
+
+async def with_retry(func, *args, attempts: int = 3, delay: float = 1.5, **kwargs):
+    """Викликати Telegram-запит (reply_text/reply_location/...) з повторами.
+
+    Проксі PythonAnywhere інколи віддає транзиентний 503 на вихідні виклики
+    api.telegram.org — без повтору клієнт бачить «тишу» посеред анкети/запису,
+    хоча його попередня відповідь вже збережена в БД.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return await func(*args, **kwargs)
+        except NetworkError as e:
+            if attempt == attempts:
+                raise
+            logger.warning(
+                f"⚠️ {getattr(func, '__qualname__', func)} не вдався "
+                f"(спроба {attempt}/{attempts}): {e}. Повторюю..."
+            )
+            await asyncio.sleep(delay)
