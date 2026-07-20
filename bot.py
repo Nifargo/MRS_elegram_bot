@@ -10,6 +10,10 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
+# httpx на INFO логує повний URL кожного запиту, включно з /bot<TOKEN>/... —
+# токен потрапляв у відкритому вигляді в лог-файл на кожне надіслане повідомлення.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
