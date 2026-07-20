@@ -81,17 +81,20 @@ def get_available_times(company_id: str, staff_id: int, date: str, service_ids: 
     return _request("GET", f"book_times/{company_id}/{staff_id}/{date}", params=params)["data"]
 
 
-def find_available_staff_for_slot(company_id: str, service_id: int, date: str, time_str: str) -> int | None:
+def find_available_staff_for_slot(company_id: str, service_id: int, date: str, time_str: str) -> tuple[int, int] | None:
     """Знайти конкретного майстра, у якого вільний саме цей час (для create_record —
 
     там staff_id=0 не підтверджений документацією, тож на підтвердженні запису
     резолвимо «будь-якого майстра» у конкретного, перебираючи кваліфікованих.
+    Повертає (staff_id, seance_length) — book_times віддає тривалість слоту в секундах,
+    а create_record вимагає її окремим обов'язковим параметром.
     """
     staff = get_staff(company_id, service_ids=[service_id])
     for member in staff:
         times = get_available_times(company_id, member["id"], date, service_ids=[service_id])
-        if any(t["time"] == time_str for t in times):
-            return member["id"]
+        slot = next((t for t in times if t["time"] == time_str), None)
+        if slot:
+            return member["id"], slot["seance_length"]
     return None
 
 
@@ -127,13 +130,14 @@ def get_client_records(company_id: str, client_id: int) -> list[dict]:
 
 
 def create_record(company_id: str, client_id: int, staff_id: int, service_id: int,
-                   datetime_str: str, comment: str = "") -> dict:
+                   datetime_str: str, seance_length: int, comment: str = "") -> dict:
     """Створити запис. datetime_str у форматі 'YYYY-MM-DD HH:MM:SS'."""
     payload = {
         "staff_id": staff_id,
         "services": [{"id": service_id}],
         "client": {"id": client_id},
         "datetime": datetime_str,
+        "seance_length": seance_length,
         "comment": comment,
     }
     return _request("POST", f"records/{company_id}", json=payload)["data"]

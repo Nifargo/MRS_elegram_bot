@@ -409,16 +409,17 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     date_str, time_str = b["date"], b["time"]
 
     try:
-        staff_id = altegio.find_available_staff_for_slot(company_id, service["id"], date_str, time_str)
+        slot = altegio.find_available_staff_for_slot(company_id, service["id"], date_str, time_str)
     except AltegioError as e:
         logger.error(f"Altegio пошук майстра {company_id}: {e}")
         await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
         return
 
-    if staff_id is None:
+    if slot is None:
         await with_retry(message.reply_text, "На жаль, цей час щойно зайняли 😔 Оберіть інший час.")
         await _ask_time(message, context)
         return
+    staff_id, seance_length = slot
 
     client = db.get_client_by_id(b["client_id"])
     altegio_client_id = _resolve_altegio_client_id(client, company_id)
@@ -440,7 +441,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         record = altegio.create_record(
             company_id, altegio_client_id, staff_id, service["id"],
-            f"{date_str} {time_str}:00", comment=comment,
+            f"{date_str} {time_str}:00", seance_length, comment=comment,
         )
     except AltegioError as e:
         logger.error(f"Не вдалося створити запис: {e}")
