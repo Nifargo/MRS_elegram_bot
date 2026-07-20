@@ -24,7 +24,7 @@ from handlers.common import normalize_phone, parse_date, parse_weight, with_retr
 from handlers.menu import MAIN_MENU
 from services import altegio, altegio_sync
 from services.altegio import AltegioError
-from services.notifications import notify_admins_async, schedule_form_incomplete
+from services.notifications import schedule_form_incomplete
 
 logger = logging.getLogger(__name__)
 
@@ -141,12 +141,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         except Exception as e:
             logger.warning(f"Не вдалося запланувати form_incomplete (client_id={client['id']}): {e}")
         logger.info(f"🆕 Новий клієнт tg_user_id={user.id}, id={client['id']}")
-
-        username = f" (@{user.username})" if user.username else ""
-        await notify_admins_async(
-            context.bot,
-            f"🆕 Новий користувач запустив бота: {user.full_name}{username}",
-        )
 
     if client["registration_done"]:
         await with_retry(update.message.reply_text, WELCOME_MESSAGE, reply_markup=MAIN_MENU)
