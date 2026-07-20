@@ -119,7 +119,7 @@ def ensure_initialized():
         return False
 
 
-def ensure_initialized_with_retries(attempts: int = 3) -> bool:
+def ensure_initialized_with_retries(attempts: int = 7) -> bool:
     """ensure_initialized() з повторами - проксі PythonAnywhere інколи віддає 503."""
     for attempt in range(1, attempts + 1):
         if ensure_initialized():
