@@ -108,6 +108,10 @@ def ensure_initialized():
         return True
     except Exception as e:
         logger.error(f"❌ Помилка ініціалізації Application: {e}", exc_info=True)
+        # application вже присвоєно в initialize_application() ДО впалого await
+        # application.initialize() — без скидання наступний виклик побачить
+        # "application is not None" і вважатиме бота готовим, хоча він таким не є
+        application = None
         return False
 
 
