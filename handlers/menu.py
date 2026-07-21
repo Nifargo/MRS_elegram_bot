@@ -24,7 +24,8 @@ MAIN_MENU = ReplyKeyboardMarkup(
 # Кнопки, чий функціонал ще не реалізовано (наступні фази плану).
 # BTN_MY_PETS обробляється в handlers/pets.py (Фаза 1).
 # BTN_BOOK/BTN_PRICE обробляються в handlers/booking.py (Фаза 2).
-_PLACEHOLDER_BUTTONS = {BTN_MY_BOOKINGS, BTN_HISTORY, BTN_BONUSES, BTN_HELP}
+# BTN_MY_BOOKINGS обробляється в handlers/my_bookings.py (Фаза 3).
+_PLACEHOLDER_BUTTONS = {BTN_HISTORY, BTN_BONUSES, BTN_HELP}
 
 
 def is_menu_button(text: str) -> bool:

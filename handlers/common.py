@@ -6,7 +6,32 @@ from datetime import date, datetime
 
 from telegram.error import NetworkError
 
+from services.notifications import KYIV_TZ
+
 logger = logging.getLogger(__name__)
+
+UA_WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
+
+
+def format_date_label(iso_date: str) -> str:
+    """'2026-08-01' -> '01.08 Сб' (для кнопок вибору дати)."""
+    d = date.fromisoformat(iso_date)
+    return f"{d.strftime('%d.%m')} {UA_WEEKDAYS[d.weekday()]}"
+
+
+def parse_iso_datetime(raw: str) -> datetime:
+    """Захисний парсинг timestamptz-рядка з Supabase/Altegio (інколи із 'Z' замість offset)."""
+    return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+
+
+def to_kyiv_iso(date_str: str, time_str: str) -> str:
+    """'2026-08-01', '10:00' -> aware ISO-рядок у Europe/Kyiv, для запису в timestamptz-колонку.
+
+    Без явного offset Supabase/PostgREST трактує наївний рядок як UTC —
+    запис на 10:00 за Києвом писався б у БД як 10:00 UTC (на 2-3 години пізніше,
+    ніж насправді), тому offset потрібен завжди.
+    """
+    return datetime.fromisoformat(f"{date_str}T{time_str}:00").replace(tzinfo=KYIV_TZ).isoformat()
 
 
 def normalize_phone(raw: str) -> str | None:

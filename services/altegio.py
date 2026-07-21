@@ -28,6 +28,10 @@ def _request(method: str, path: str, params: dict = None, json: dict = None) -> 
         logger.error(f"Altegio API помилка {response.status_code}: {response.text[:300]}")
         raise AltegioError(f"{method} {path} -> HTTP {response.status_code}: {response.text[:300]}")
 
+    if not response.text.strip():
+        # DELETE (cancel_record) інколи повертає успіх із порожнім тілом.
+        return {}
+
     data = response.json()
     if isinstance(data, dict) and data.get("success") is False:
         logger.error(f"Altegio API success=False: {data}")
@@ -143,9 +147,20 @@ def create_record(company_id: str, client_id: int, staff_id: int, service_id: in
     return _request("POST", f"records/{company_id}", json=payload)["data"]
 
 
-def move_record(company_id: str, record_id: int, staff_id: int, datetime_str: str) -> dict:
-    """Перенести запис на інший час/майстра."""
-    payload = {"staff_id": staff_id, "datetime": datetime_str}
+def move_record(company_id: str, record_id: int, staff_id: int, client_id: int, service_id: int,
+                 datetime_str: str, seance_length: int) -> dict:
+    """Перенести запис на інший час/майстра.
+
+    Altegio вимагає той самий повний payload, що й create_record (client/services/
+    seance_length) — самого staff_id+datetime недостатньо, перевірено живим тестом (422).
+    """
+    payload = {
+        "staff_id": staff_id,
+        "client": {"id": client_id},
+        "services": [{"id": service_id}],
+        "datetime": datetime_str,
+        "seance_length": seance_length,
+    }
     return _request("PUT", f"record/{company_id}/{record_id}", json=payload)["data"]
 
 

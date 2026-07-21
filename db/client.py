@@ -96,6 +96,43 @@ def update_tracked_record_status(altegio_record_id: int, status: str) -> None:
     ).execute()
 
 
+def get_tracked_record_by_id(record_id: int) -> dict | None:
+    """Кешований запис за внутрішнім id (дії клієнта: перенос/скасування)."""
+    result = supabase.table("tracked_records").select("*").eq("id", record_id).limit(1).execute()
+    return result.data[0] if result.data else None
+
+
+def get_upcoming_tracked_records(client_id: int) -> list[dict]:
+    """Майбутні активні записи клієнта, найближчі першими."""
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("tracked_records")
+        .select("*")
+        .eq("client_id", client_id)
+        .eq("status", "active")
+        .gte("starts_at", now)
+        .order("starts_at")
+        .execute()
+    )
+    return result.data
+
+
+def get_last_past_tracked_record(client_id: int) -> dict | None:
+    """Останній минулий (не скасований) запис клієнта — для «Повторити останній запис»."""
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("tracked_records")
+        .select("*")
+        .eq("client_id", client_id)
+        .eq("status", "active")
+        .lt("starts_at", now)
+        .order("starts_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 # --- Сповіщення ---
 
 def create_notification(client_id: int, type: str, send_after: str, payload: dict | None = None) -> dict:

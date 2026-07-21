@@ -72,6 +72,8 @@ def _handle(payload: dict) -> None:
         "service_title": service_title,
         "location_title": location_title,
         "status": "cancelled" if data.get("attendance") == -1 else "active",
+        "company_id": company_id or None,
+        "altegio_service_id": services[0].get("id") if services else None,
         "raw_json": data,
     }
 

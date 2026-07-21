@@ -12,6 +12,8 @@ Callback data:
   bk_svc:<id>         — обрати послугу
   bk_all:<page>       — показати повний список послуг (з підказок по породі)
   bk_pg_svc:<page>    — пагінація повного списку послуг
+  bk_switch_cat:<id>  — перемкнутись на інший рівень грумера (порода є тільки там)
+  bk_contact_admin    — зв'язатись з адміністратором (заглушка)
   bk_toproceed        — з режиму «дізнатись вартість» перейти до запису
   bk_pg_date:<page>   — пагінація дат
   bk_date:<iso>       — обрати дату
@@ -29,7 +31,7 @@ from telegram.ext import ContextTypes
 
 from config import ALTEGIO_LOCATIONS
 from db import client as db
-from handlers.common import with_retry
+from handlers.common import UA_WEEKDAYS, format_date_label, to_kyiv_iso, with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio
 from services.altegio import AltegioError
@@ -38,7 +40,6 @@ logger = logging.getLogger(__name__)
 
 PAGE_SIZE_SVC = 8
 PAGE_SIZE_DATE = 12
-UA_WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
 
 CANCEL_BUTTON = InlineKeyboardButton("❌ Скасувати", callback_data="bk_cancel")
 
@@ -52,11 +53,6 @@ def _format_price(service: dict) -> str:
     if hi and hi != lo:
         return f"{lo}–{hi} грн"
     return f"{lo} грн"
-
-
-def _format_date_label(iso_date: str) -> str:
-    d = date.fromisoformat(iso_date)
-    return f"{d.strftime('%d.%m')} {UA_WEEKDAYS[d.weekday()]}"
 
 
 def _location_name(company_id: str) -> str:
@@ -109,6 +105,20 @@ def _match_services_by_breed(breed: str, services: list[dict], weight: float | N
 
     scored.sort(key=lambda pair: -pair[0])
     return [service for _, service in scored[:6]]
+
+
+def _category_type_key(title: str) -> str:
+    """'Комплексний догляд (Топ грумер)' -> 'комплексний догляд' — для групування рівнів одного типу послуги."""
+    return re.sub(r"\s*\([^)]*\)\s*$", "", title).strip().lower()
+
+
+def _sibling_categories(current_cat: dict, categories: list[dict]) -> list[dict]:
+    key = _category_type_key(current_cat["title"])
+    return [c for c in categories if c["id"] != current_cat["id"] and _category_type_key(c["title"]) == key]
+
+
+def _generic_breed_services(cat_services: list[dict]) -> list[dict]:
+    return [s for s in cat_services if s["title"].lower().startswith("інші породи")]
 
 
 # --- Клавіатури ---
@@ -172,6 +182,19 @@ async def price_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await _start(update, context, "price")
 
 
+async def start_from_pet_and_service(message, context: ContextTypes.DEFAULT_TYPE, *,
+                                       client_id: int, pet: dict, company_id: str, service: dict) -> None:
+    """Увійти у флоу запису одразу на кроці вибору дати (для «Повторити останній запис» з handlers/my_bookings.py)."""
+    context.user_data["booking"] = {
+        "mode": "book",
+        "client_id": client_id,
+        "pet": pet,
+        "company_id": company_id,
+        "service": service,
+    }
+    await _ask_date(message, context)
+
+
 # --- Кроки флоу ---
 
 async def _ask_location(message, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -210,6 +233,7 @@ async def _ask_category(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         await with_retry(message.reply_text, "У цій локації поки немає послуг для онлайн-запису 😔")
         return
 
+    b["categories"] = categories
     await with_retry(message.reply_text, "Яка послуга цікавить? 🐩", reply_markup=_category_keyboard(categories))
 
 
@@ -244,8 +268,53 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"Схоже на «{pet['name']}» ({breed}):",
             reply_markup=InlineKeyboardMarkup(rows),
         )
-    else:
-        await _show_service_page(message, context, 0)
+        return
+
+    if breed:
+        categories = b.get("categories") or []
+        current_cat = next((c for c in categories if c["id"] == b["category_id"]), None)
+        siblings = _sibling_categories(current_cat, categories) if current_cat else []
+
+        if siblings:
+            level_hits = []
+            for sib in siblings:
+                sib_services = sorted(
+                    (_slim_service(s) for s in services if s.get("category_id") == sib["id"]),
+                    key=lambda s: s["title"],
+                )
+                if _match_services_by_breed(breed, sib_services, pet.get("weight")):
+                    level_hits.append(sib)
+
+            if level_hits:
+                await _show_level_suggestion(message, pet, breed, level_hits)
+                return
+
+            generic = _generic_breed_services(cat_services)
+            if generic:
+                await _show_generic_fallback(message, pet, breed, generic, len(cat_services))
+                return
+
+    await _show_service_page(message, context, 0)
+
+
+async def _show_level_suggestion(message, pet: dict, breed: str, level_hits: list[dict]) -> None:
+    lines = [f"«{pet['name']}» ({breed}) немає серед послуг цього рівня.", "Ця порода є на рівні:"]
+    rows = [
+        [InlineKeyboardButton(f"➡️ {cat['title']}", callback_data=f"bk_switch_cat:{cat['id']}")]
+        for cat in level_hits
+    ]
+    rows.append([InlineKeyboardButton("🆘 Допомога", callback_data="bk_contact_admin")])
+    rows.append([CANCEL_BUTTON])
+    await with_retry(message.reply_text, "\n".join(lines), reply_markup=InlineKeyboardMarkup(rows))
+
+
+async def _show_generic_fallback(message, pet: dict, breed: str, generic_services: list[dict], total_count: int) -> None:
+    text = f"«{pet['name']}» ({breed}) немає в нашому прайсі 😔 Оберіть за вагою:"
+    rows = [_service_row(s) for s in generic_services]
+    rows.append([InlineKeyboardButton(f"📋 Повний перелік послуг ({total_count})", callback_data="bk_all:0")])
+    rows.append([InlineKeyboardButton("🆘 Зв'язатись з адміністратором", callback_data="bk_contact_admin")])
+    rows.append([CANCEL_BUTTON])
+    await with_retry(message.reply_text, text, reply_markup=InlineKeyboardMarkup(rows))
 
 
 async def _show_service_page(message, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
@@ -321,7 +390,7 @@ async def _show_date_page(message, context: ContextTypes.DEFAULT_TYPE, page: int
         return
 
     rows = [
-        [InlineKeyboardButton(_format_date_label(d), callback_data=f"bk_date:{d}") for d in chunk[i:i + 3]]
+        [InlineKeyboardButton(format_date_label(d), callback_data=f"bk_date:{d}") for d in chunk[i:i + 3]]
         for i in range(0, len(chunk), 3)
     ]
     nav = []
@@ -377,7 +446,7 @@ async def _show_confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     await with_retry(message.reply_text, text, reply_markup=kb)
 
 
-def _resolve_altegio_client_id(client: dict, company_id: str) -> int | None:
+def resolve_altegio_client_id(client: dict, company_id: str) -> int | None:
     """Знайти або створити Altegio-клієнта для обраної локації.
 
     clients.altegio_company_id — «домашня» філія з реєстрації, її не чіпаємо:
@@ -422,7 +491,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     staff_id, seance_length = slot
 
     client = db.get_client_by_id(b["client_id"])
-    altegio_client_id = _resolve_altegio_client_id(client, company_id)
+    altegio_client_id = resolve_altegio_client_id(client, company_id)
     if altegio_client_id is None:
         await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора.")
         return
@@ -454,10 +523,12 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "altegio_record_id": record["id"],
             "client_id": b["client_id"],
             "pet_id": pet["id"],
-            "starts_at": record.get("datetime") or f"{date_str}T{time_str}:00",
+            "starts_at": record.get("datetime") or to_kyiv_iso(date_str, time_str),
             "service_title": service["title"],
             "location_title": location_name,
             "status": "active",
+            "company_id": company_id,
+            "altegio_service_id": service["id"],
             "raw_json": record,
         })
     except Exception as e:
@@ -515,8 +586,17 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif action in ("bk_all", "bk_pg_svc"):
         await _show_service_page(query.message, context, int(rest))
 
+    elif action == "bk_switch_cat":
+        b["category_id"] = int(rest)
+        await _ask_service(query.message, context)
+
     elif action == "bk_svc":
         await _select_service(query.message, context, int(rest))
+
+    elif action == "bk_contact_admin":
+        # Заглушка: пізніше тут буде кнопка з номером телефону салону (tel:-посилання),
+        # щоб клієнт міг одразу подзвонити, за аналогією з нативним меню Telegram.
+        await with_retry(query.message.reply_text, "🚧 Ця функція ще в розробці, скоро буде доступна!")
 
     elif action == "bk_toproceed":
         b["mode"] = "book"
