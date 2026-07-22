@@ -117,6 +117,20 @@ def get_upcoming_tracked_records(client_id: int) -> list[dict]:
     return result.data
 
 
+def has_tracked_record_since(client_id: int, since: str) -> bool:
+    """Чи з'явився активний запис клієнта після вказаного часу (перевірка, чи флоу запису таки завершили)."""
+    result = (
+        supabase.table("tracked_records")
+        .select("id")
+        .eq("client_id", client_id)
+        .eq("status", "active")
+        .gte("created_at", since)
+        .limit(1)
+        .execute()
+    )
+    return bool(result.data)
+
+
 def get_last_past_tracked_record(client_id: int) -> dict | None:
     """Останній минулий (не скасований) запис клієнта — для «Повторити останній запис»."""
     now = datetime.now(timezone.utc).isoformat()
@@ -144,6 +158,20 @@ def create_notification(client_id: int, type: str, send_after: str, payload: dic
         "payload_json": payload,
     }).execute()
     return result.data[0]
+
+
+def has_pending_notification(client_id: int, type: str) -> bool:
+    """Чи є вже заплановане (pending) сповіщення цього типу для клієнта."""
+    result = (
+        supabase.table("notifications")
+        .select("id")
+        .eq("client_id", client_id)
+        .eq("type", type)
+        .eq("status", "pending")
+        .limit(1)
+        .execute()
+    )
+    return bool(result.data)
 
 
 def mark_notification(notification_id: int, status: str) -> None:

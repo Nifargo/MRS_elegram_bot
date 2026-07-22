@@ -33,7 +33,7 @@ from config import ALTEGIO_LOCATIONS
 from db import client as db
 from handlers.common import UA_WEEKDAYS, format_date_label, to_kyiv_iso, with_retry
 from handlers.menu import MAIN_MENU
-from services import altegio
+from services import altegio, notifications
 from services.altegio import AltegioError
 
 logger = logging.getLogger(__name__)
@@ -163,6 +163,12 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str) 
         )
         return
 
+    if mode == "book":
+        try:
+            notifications.schedule_booking_incomplete(client["id"])
+        except Exception as e:
+            logger.warning(f"Не вдалося запланувати booking_incomplete (client_id={client['id']}): {e}")
+
     context.user_data["booking"] = {"mode": mode, "client_id": client["id"]}
 
     if len(pets) == 1:
@@ -185,6 +191,11 @@ async def price_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def start_from_pet_and_service(message, context: ContextTypes.DEFAULT_TYPE, *,
                                        client_id: int, pet: dict, company_id: str, service: dict) -> None:
     """Увійти у флоу запису одразу на кроці вибору дати (для «Повторити останній запис» з handlers/my_bookings.py)."""
+    try:
+        notifications.schedule_booking_incomplete(client_id)
+    except Exception as e:
+        logger.warning(f"Не вдалося запланувати booking_incomplete (client_id={client_id}): {e}")
+
     context.user_data["booking"] = {
         "mode": "book",
         "client_id": client_id,

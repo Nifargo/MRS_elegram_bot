@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 KYIV_TZ = ZoneInfo("Europe/Kyiv")
 FORM_INCOMPLETE_HOUR = 21  # о котрій годині (Київ) нагадувати адмінам про незаповнені анкети
+BOOKING_INCOMPLETE_HOUR = 18  # о котрій годині (Київ) нагадувати адмінам про незавершений запис
 
 _API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
@@ -67,3 +68,18 @@ def schedule_form_incomplete(client_id: int) -> None:
     if send_after <= now:
         send_after += timedelta(days=1)
     db.create_notification(client_id, "form_incomplete", send_after.isoformat())
+
+
+def schedule_booking_incomplete(client_id: int) -> None:
+    """Запланувати перевірку 'клієнт почав запис, але не завершив' на сьогодні 18:00 (Київ).
+
+    Якщо 18:00 вже минула — на завтра. Не дублює, якщо для клієнта вже є
+    pending-сповіщення цього типу (наприклад, кілька спроб запису за день).
+    """
+    if db.has_pending_notification(client_id, "booking_incomplete"):
+        return
+    now = datetime.now(KYIV_TZ)
+    send_after = now.replace(hour=BOOKING_INCOMPLETE_HOUR, minute=0, second=0, microsecond=0)
+    if send_after <= now:
+        send_after += timedelta(days=1)
+    db.create_notification(client_id, "booking_incomplete", send_after.isoformat())

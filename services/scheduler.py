@@ -39,9 +39,28 @@ def _handle_form_incomplete(notification: dict) -> str:
     return "sent" if notifications.notify_admins(text) else "failed"
 
 
+def _handle_booking_incomplete(notification: dict) -> str:
+    """Сповістити адмінів, якщо клієнт почав запис, але не завершив його того ж дня."""
+    client = db.get_client_by_id(notification["client_id"])
+    if client is None:
+        return "sent"
+
+    if db.has_tracked_record_since(client["id"], notification["created_at"]):
+        return "sent"  # запис таки оформили після старту флоу — слати нічого
+
+    who = client.get("name") or f"tg_user_id {client['tg_user_id']}"
+    phone = client.get("phone") or "телефон не вказано"
+    text = (
+        f"📵 Клієнт {who} ({phone}) почав запис на візит, але не завершив його.\n"
+        "Можливо, виникла проблема — зателефонуйте, щоб дізнатись і допомогти."
+    )
+    return "sent" if notifications.notify_admins(text) else "failed"
+
+
 # Обробники по типу сповіщення. Решта типів додається у Фазі 4+.
 _HANDLERS = {
     "form_incomplete": _handle_form_incomplete,
+    "booking_incomplete": _handle_booking_incomplete,
 }
 
 
