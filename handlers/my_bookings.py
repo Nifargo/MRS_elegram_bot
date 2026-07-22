@@ -28,7 +28,7 @@ from handlers import booking
 from handlers.common import format_date_label, parse_iso_datetime, to_kyiv_iso, with_retry
 from services.notifications import KYIV_TZ
 from handlers.menu import MAIN_MENU
-from services import altegio, notifications
+from services import altegio
 from services.altegio import AltegioError
 
 logger = logging.getLogger(__name__)
@@ -256,14 +256,6 @@ async def _do_cancel(message, record: dict, context: ContextTypes.DEFAULT_TYPE) 
 
     db.update_tracked_record_status(record["altegio_record_id"], "cancelled")
     await with_retry(message.reply_text, "❌ Запис скасовано.", reply_markup=MAIN_MENU)
-
-    client = db.get_client_by_id(record["client_id"])
-    if client:
-        who = client.get("name") or f"tg_user_id {client['tg_user_id']}"
-        phone = client.get("phone") or "телефон не вказано"
-        await notifications.notify_admins_async(context.bot,
-            f"❌ Клієнт {who} ({phone}) скасував запис:\n{_format_record_card(record)}"
-        )
 
 
 # --- Повтор останнього запису ---

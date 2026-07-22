@@ -1,6 +1,8 @@
 """Головне меню бота."""
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
 from telegram.ext import ContextTypes
+
+from config import HELP_PHONE
 
 BTN_BOOK = "📅 Записатись"
 BTN_PRICE = "💰 Дізнатись вартість"
@@ -25,11 +27,12 @@ MAIN_MENU = ReplyKeyboardMarkup(
 # BTN_MY_PETS обробляється в handlers/pets.py (Фаза 1).
 # BTN_BOOK/BTN_PRICE обробляються в handlers/booking.py (Фаза 2).
 # BTN_MY_BOOKINGS обробляється в handlers/my_bookings.py (Фаза 3).
-_PLACEHOLDER_BUTTONS = {BTN_HISTORY, BTN_BONUSES, BTN_HELP}
+# BTN_HELP обробляється нижче (Фаза 9).
+_PLACEHOLDER_BUTTONS = {BTN_HISTORY, BTN_BONUSES}
 
 
 def is_menu_button(text: str) -> bool:
-    return text in _PLACEHOLDER_BUTTONS or text == BTN_AI
+    return text in _PLACEHOLDER_BUTTONS or text in (BTN_AI, BTN_HELP)
 
 
 async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -38,6 +41,15 @@ async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if text == BTN_AI:
         await update.message.reply_text("Питайте — відповім про послуги, догляд і запис 🐾")
+        return True
+
+    if text == BTN_HELP:
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(f"📞 Подзвонити {HELP_PHONE}", url=f"tel:{HELP_PHONE}")
+        ]])
+        await update.message.reply_text(
+            "Зв'яжіться з нами по телефону:", reply_markup=keyboard
+        )
         return True
 
     if text in _PLACEHOLDER_BUTTONS:

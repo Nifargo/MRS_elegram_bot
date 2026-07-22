@@ -32,6 +32,9 @@ ALTEGIO_WEBHOOK_SECRET = os.getenv("ALTEGIO_WEBHOOK_SECRET")
 ADMIN_GROUP_CHAT_ID = int(os.getenv("ADMIN_GROUP_CHAT_ID")) if os.getenv("ADMIN_GROUP_CHAT_ID") else None
 ADMIN_TOPIC_ID = int(os.getenv("ADMIN_TOPIC_ID")) if os.getenv("ADMIN_TOPIC_ID") else None
 
+# Номер салону для кнопки "🆘 Допомога" (Фаза 9)
+HELP_PHONE = "+380960080482"
+
 SYSTEM_PROMPT = """
 Ти - досвідчений консультант грумінг-салону "Mr.Snoopy Grooming".
 Ти допомагаєш клієнтам з питаннями:
