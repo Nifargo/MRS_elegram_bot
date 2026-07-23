@@ -38,6 +38,18 @@ def get_client_by_phone(phone: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
+def get_clients_with_altegio_link() -> list[dict]:
+    """Клієнти, прив'язані до Altegio (для щоденної синхронізації вакцинації, Фаза 10)."""
+    result = (
+        supabase.table("clients")
+        .select("*")
+        .not_.is_("altegio_client_id", "null")
+        .not_.is_("altegio_company_id", "null")
+        .execute()
+    )
+    return result.data
+
+
 # --- Улюбленці ---
 
 def create_pet(client_id: int, fields: dict) -> dict:
@@ -180,3 +192,16 @@ def mark_notification(notification_id: int, status: str) -> None:
     if status == "sent":
         fields["sent_at"] = datetime.now(timezone.utc).isoformat()
     supabase.table("notifications").update(fields).eq("id", notification_id).execute()
+
+
+# --- Щоденні (не 10-хвилинні) cron-задачі ---
+
+def get_cron_last_run(key: str) -> str | None:
+    """Дата (ISO) останнього запуску щоденної задачі з цим ключем. None, якщо ще не запускалась."""
+    result = supabase.table("cron_state").select("last_run_date").eq("key", key).limit(1).execute()
+    return result.data[0]["last_run_date"] if result.data else None
+
+
+def set_cron_last_run(key: str, last_run_date: str) -> None:
+    """Позначити, що щоденна задача виконана сьогодні (ISO-дата)."""
+    supabase.table("cron_state").upsert({"key": key, "last_run_date": last_run_date}, on_conflict="key").execute()
