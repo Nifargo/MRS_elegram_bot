@@ -9,7 +9,7 @@ Callback data:
 import logging
 from datetime import date
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
@@ -21,6 +21,7 @@ from telegram.ext import (
 
 from db import client as db
 from handlers.common import parse_date, parse_weight
+from handlers.menu import MAIN_MENU
 from services import altegio_sync
 
 logger = logging.getLogger(__name__)
@@ -134,7 +135,8 @@ async def show_pets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
-    await update.message.reply_text("Ваші улюбленці:", reply_markup=_list_keyboard(pets))
+    await update.message.reply_text("🐾 Ваші улюбленці:", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("Оберіть улюбленця:", reply_markup=_list_keyboard(pets))
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -269,7 +271,7 @@ async def edit_field_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def edit_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("edit_pet_id", None)
     context.user_data.pop("edit_field", None)
-    await update.message.reply_text("Скасовано.")
+    await update.message.reply_text("Скасовано.", reply_markup=MAIN_MENU)
     return ConversationHandler.END
 
 
