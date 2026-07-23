@@ -9,9 +9,13 @@ from datetime import datetime, timezone
 
 from db import client as db
 from db.client import supabase
-from services import notifications
+from services import notifications, vaccine_sync
+from services.notifications import KYIV_TZ
 
 logger = logging.getLogger(__name__)
+
+VACCINE_SYNC_HOUR = 10  # Київ; після цієї години перший виклик /cron за добу запускає синхронізацію
+VACCINE_SYNC_KEY = "vaccine_sync"
 
 
 def get_due_notifications() -> list[dict]:
@@ -75,10 +79,32 @@ def _handle_booking_incomplete(notification: dict, application=None) -> str:
 
 
 # Обробники по типу сповіщення. Решта типів додається у Фазі 4+.
+# "vaccine" (Фаза 10) тут немає — sync_vaccine_dates() шле нагадування напряму,
+# без проміжного рядка в notifications (див. _run_daily_tasks нижче).
 _HANDLERS = {
     "form_incomplete": _handle_form_incomplete,
     "booking_incomplete": _handle_booking_incomplete,
 }
+
+
+def _run_daily_tasks() -> None:
+    """Задачі, що виконуються раз на добу (а не при кожному 10-хвилинному тику).
+
+    Диспетчер розрізняє «щоденне» від «кожні 10 хв» через cron_state: перший
+    виклик /cron після VACCINE_SYNC_HOUR (Київ), для якого ще не було запуску
+    сьогодні, і виконує задачу; решта тиків того ж дня — no-op.
+    """
+    now = datetime.now(KYIV_TZ)
+    if now.hour < VACCINE_SYNC_HOUR:
+        return
+    today = now.date().isoformat()
+    if db.get_cron_last_run(VACCINE_SYNC_KEY) == today:
+        return
+    try:
+        vaccine_sync.sync_vaccine_dates()
+    except Exception as e:
+        logger.error(f"❌ Помилка щоденної синхронізації вакцинації: {e}", exc_info=True)
+    db.set_cron_last_run(VACCINE_SYNC_KEY, today)
 
 
 def run_due(application=None) -> int:
@@ -87,6 +113,7 @@ def run_due(application=None) -> int:
     `application` — жива Telegram Application (якщо доступна), потрібна лише
     обробникам, яким треба прибрати пам'ятний стан клієнта (напр. booking_incomplete).
     """
+    _run_daily_tasks()
     due = get_due_notifications()
     logger.info(f"🔔 Знайдено {len(due)} сповіщень для відправки")
 
