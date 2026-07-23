@@ -2,10 +2,13 @@
 from telegram.ext import Application, CallbackQueryHandler, MessageHandler, filters
 
 from handlers import ai_chat, booking, my_bookings, pets, registration
+from handlers.error_handler import handle_error
 from handlers.menu import BTN_BOOK, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_PRICE
 
 
 def register_handlers(application: Application) -> None:
+    application.add_error_handler(handle_error)
+
     # Порядок важливий: діалоги (анкета, редагування) мають перехоплювати
     # повідомлення раніше за загальний AI-обробник.
     application.add_handler(registration.conversation)  # містить /start

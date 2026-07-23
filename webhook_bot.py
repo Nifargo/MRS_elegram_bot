@@ -181,7 +181,10 @@ def webhook():
 def cron():
     """Викликається зовнішнім планувальником (cron-job.org / PythonAnywhere Scheduled Task)."""
     try:
-        sent_count = scheduler.run_due()
+        # Best-effort: якщо Application ще не піднято, run_due() все одно
+        # відправить сповіщення адмінам — просто не почистить user_data booking.
+        ensure_initialized_with_retries()
+        sent_count = scheduler.run_due(application)
         return {'processed': sent_count}, 200
     except Exception as e:
         logger.error(f"❌ Помилка cron-диспетчера: {e}", exc_info=True)

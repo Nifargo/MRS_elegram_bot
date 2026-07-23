@@ -26,7 +26,7 @@ import logging
 import re
 from datetime import date
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import ContextTypes
 
 from config import ALTEGIO_LOCATIONS, HELP_PHONE
@@ -169,6 +169,9 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str) 
         except Exception as e:
             logger.warning(f"Не вдалося запланувати booking_incomplete (client_id={client['id']}): {e}")
 
+    greeting = "📅 Оформлюємо запис..." if mode == "book" else "💰 Перевіряємо вартість..."
+    await with_retry(update.message.reply_text, greeting, reply_markup=ReplyKeyboardRemove())
+
     context.user_data["booking"] = {"mode": mode, "client_id": client["id"]}
 
     if len(pets) == 1:
@@ -195,6 +198,8 @@ async def start_from_pet_and_service(message, context: ContextTypes.DEFAULT_TYPE
         notifications.schedule_booking_incomplete(client_id)
     except Exception as e:
         logger.warning(f"Не вдалося запланувати booking_incomplete (client_id={client_id}): {e}")
+
+    await with_retry(message.reply_text, "📅 Повторюємо останній запис...", reply_markup=ReplyKeyboardRemove())
 
     context.user_data["booking"] = {
         "mode": "book",
@@ -571,7 +576,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     b = context.user_data.get("booking")
     if b is None:
         await with_retry(query.message.reply_text,
-            "Сесію запису втрачено — почніть спочатку кнопкою «📅 Записатись»."
+            "Сесію запису втрачено — почніть спочатку кнопкою «📅 Записатись».",
+            reply_markup=MAIN_MENU,
         )
         return
 
