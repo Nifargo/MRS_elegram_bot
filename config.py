@@ -17,6 +17,13 @@ ALTEGIO_LOCATIONS = {
     "Володимира Великого": os.getenv("ALTEGIO_COMPANY_IDS_Vel"),
 }
 
+# Локації салону: назва -> посилання "Залишити відгук" на Google Maps (Фаза 4, оцінка 5⭐+5⭐)
+GOOGLE_MAPS_REVIEW_URLS = {
+    "Замарстинівська": "https://search.google.com/local/writereview?placeid=ChIJDRoc94_dOkcRrXWt_k2e2xQ",
+    "Тернопільська": "https://search.google.com/local/writereview?placeid=ChIJSeDLivznOkcR60tDmWm7GIs",
+    "Володимира Великого": "https://search.google.com/local/writereview?placeid=ChIJWws03CfnOkcRMdCOMgg1VkE",
+}
+
 # Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")

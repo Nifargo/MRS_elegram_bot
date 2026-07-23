@@ -43,14 +43,14 @@ Callback data:
 import difflib
 import logging
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import ContextTypes
 
 from config import ALTEGIO_BOOKING_WIDGET_URL, ALTEGIO_LOCATIONS, HELP_PHONE
 from db import client as db
-from handlers.common import UA_WEEKDAYS, format_date_label, to_kyiv_iso, with_retry
+from handlers.common import UA_WEEKDAYS, format_date_label, kyiv_datetime, with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio, notifications
 from services.altegio import AltegioError
@@ -574,12 +574,15 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     loc_name = location_name(company_id)
+    starts_dt = kyiv_datetime(date_str, time_str)
+    ends_dt = starts_dt + timedelta(seconds=seance_length)
     try:
         db.upsert_tracked_record({
             "altegio_record_id": record["id"],
             "client_id": b["client_id"],
             "pet_id": pet["id"],
-            "starts_at": record.get("datetime") or to_kyiv_iso(date_str, time_str),
+            "starts_at": record.get("datetime") or starts_dt.isoformat(),
+            "ends_at": ends_dt.isoformat(),
             "service_title": service["title"],
             "location_title": loc_name,
             "status": "active",
@@ -588,6 +591,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "staff_id": staff_id,
             "raw_json": record,
         })
+        notifications.schedule_visit_notifications(b["client_id"], record["id"], starts_dt, ends_dt)
     except Exception as e:
         logger.error(f"Не вдалося зберегти tracked_record {record.get('id')}: {e}")
 

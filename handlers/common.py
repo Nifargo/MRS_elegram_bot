@@ -25,14 +25,19 @@ def parse_iso_datetime(raw: str) -> datetime:
     return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
 
 
-def to_kyiv_iso(date_str: str, time_str: str) -> str:
-    """'2026-08-01', '10:00' -> aware ISO-рядок у Europe/Kyiv, для запису в timestamptz-колонку.
+def kyiv_datetime(date_str: str, time_str: str) -> datetime:
+    """'2026-08-01', '10:00' -> aware datetime у Europe/Kyiv.
 
     Без явного offset Supabase/PostgREST трактує наївний рядок як UTC —
     запис на 10:00 за Києвом писався б у БД як 10:00 UTC (на 2-3 години пізніше,
     ніж насправді), тому offset потрібен завжди.
     """
-    return datetime.fromisoformat(f"{date_str}T{time_str}:00").replace(tzinfo=KYIV_TZ).isoformat()
+    return datetime.fromisoformat(f"{date_str}T{time_str}:00").replace(tzinfo=KYIV_TZ)
+
+
+def to_kyiv_iso(date_str: str, time_str: str) -> str:
+    """'2026-08-01', '10:00' -> aware ISO-рядок у Europe/Kyiv, для запису в timestamptz-колонку."""
+    return kyiv_datetime(date_str, time_str).isoformat()
 
 
 def normalize_phone(raw: str) -> str | None:
