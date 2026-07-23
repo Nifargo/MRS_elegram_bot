@@ -13,7 +13,7 @@ Callback data:
   bk_all:<page>       — показати повний список послуг (з підказок по породі)
   bk_pg_svc:<page>    — пагінація повного списку послуг
   bk_switch_cat:<id>  — перемкнутись на інший рівень грумера (порода є тільки там)
-  bk_contact_admin    — зв'язатись з адміністратором (заглушка)
+  bk_contact_admin    — зв'язатись з адміністратором (номер салону)
   bk_toproceed        — з режиму «дізнатись вартість» перейти до запису
   bk_pg_date:<page>   — пагінація дат
   bk_date:<iso>       — обрати дату
@@ -29,7 +29,7 @@ from datetime import date
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from config import ALTEGIO_LOCATIONS
+from config import ALTEGIO_LOCATIONS, HELP_PHONE
 from db import client as db
 from handlers.common import UA_WEEKDAYS, format_date_label, to_kyiv_iso, with_retry
 from handlers.menu import MAIN_MENU
@@ -605,9 +605,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await _select_service(query.message, context, int(rest))
 
     elif action == "bk_contact_admin":
-        # Заглушка: пізніше тут буде кнопка з номером телефону салону (tel:-посилання),
-        # щоб клієнт міг одразу подзвонити, за аналогією з нативним меню Telegram.
-        await with_retry(query.message.reply_text, "🚧 Ця функція ще в розробці, скоро буде доступна!")
+        await with_retry(query.message.reply_text, f"Зв'яжіться з нами по телефону: {HELP_PHONE}")
 
     elif action == "bk_toproceed":
         b["mode"] = "book"
