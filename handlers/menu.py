@@ -1,5 +1,5 @@
 """Головне меню бота."""
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
+from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from config import HELP_PHONE
@@ -44,12 +44,9 @@ async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return True
 
     if text == BTN_HELP:
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton(f"📞 Подзвонити {HELP_PHONE}", url=f"tel:{HELP_PHONE}")
-        ]])
-        await update.message.reply_text(
-            "Зв'яжіться з нами по телефону:", reply_markup=keyboard
-        )
+        # Telegram Bot API не приймає tel: у url inline-кнопки ("wrong port number"),
+        # тому номер просто в тексті — Telegram сам робить його тапабельним.
+        await update.message.reply_text(f"Зв'яжіться з нами по телефону: {HELP_PHONE}")
         return True
 
     if text in _PLACEHOLDER_BUTTONS:
