@@ -1,180 +1,172 @@
-# Graph Report - .  (2026-07-23)
+# Graph Report - .  (2026-07-24)
 
 ## Corpus Check
-- Corpus is ~21,267 words - fits in a single context window. You may not need a graph.
+- 18 files · ~23,653 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 502 nodes · 1009 edges · 45 communities (18 shown, 27 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 39 edges (avg confidence: 0.63)
+- 552 nodes · 1124 edges · 40 communities (18 shown, 22 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 54 edges (avg confidence: 0.69)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Client & Pet Data Layer (dbclient.py)|Client & Pet Data Layer (db/client.py)]]
-- [[_COMMUNITY_Booking Flow Core|Booking Flow Core]]
-- [[_COMMUNITY_Common Validators & Formatting|Common Validators & Formatting]]
-- [[_COMMUNITY_Booking DateTime Handling|Booking Date/Time Handling]]
-- [[_COMMUNITY_Pet Card Editing|Pet Card Editing]]
+- [[_COMMUNITY_Supabase Client CRUD|Supabase Client CRUD]]
+- [[_COMMUNITY_Booking Flow (ДатаЧасКатегорія)|Booking Flow (Дата/Час/Категорія)]]
+- [[_COMMUNITY_Bot Entry Points & Setup|Bot Entry Points & Setup]]
+- [[_COMMUNITY_Cron & Admin Utilities|Cron & Admin Utilities]]
+- [[_COMMUNITY_Pet Registration Flow|Pet Registration Flow]]
+- [[_COMMUNITY_Error Handling & Handler Setup|Error Handling & Handler Setup]]
+- [[_COMMUNITY_Reschedule & Cancel Flow|Reschedule & Cancel Flow]]
+- [[_COMMUNITY_Deployment Guide|Deployment Guide]]
 - [[_COMMUNITY_Altegio API Client|Altegio API Client]]
-- [[_COMMUNITY_Admin Notifications & Scheduler|Admin Notifications & Scheduler]]
-- [[_COMMUNITY_Bot Entry Points (bot.pywebhook_bot.py)|Bot Entry Points (bot.py/webhook_bot.py)]]
-- [[_COMMUNITY_AI Chat (Groq) Integration|AI Chat (Groq) Integration]]
-- [[_COMMUNITY_Groq Client & Help Phone|Groq Client & Help Phone]]
-- [[_COMMUNITY_Altegio Webhook Ingestion|Altegio Webhook Ingestion]]
-- [[_COMMUNITY_Booking Breed-Fallback Suggestions|Booking Breed-Fallback Suggestions]]
-- [[_COMMUNITY_Claude Code Hooks Registry|Claude Code Hooks Registry]]
-- [[_COMMUNITY_Claude Settings Structure|Claude Settings Structure]]
-- [[_COMMUNITY_Altegio Pets Comment Sync|Altegio Pets Comment Sync]]
-- [[_COMMUNITY_Webhook Registration Script|Webhook Registration Script]]
-- [[_COMMUNITY_Read-Tool Guard Hook|Read-Tool Guard Hook]]
-- [[_COMMUNITY_Destructive-Command Block Hook|Destructive-Command Block Hook]]
-- [[_COMMUNITY_Format-on-Save Hook|Format-on-Save Hook]]
-- [[_COMMUNITY_RTK Rewrite Hook|RTK Rewrite Hook]]
-- [[_COMMUNITY_Context Recovery Hook|Context Recovery Hook]]
-- [[_COMMUNITY_Client Schema & Migration|Client Schema & Migration]]
-- [[_COMMUNITY_Tracked Records Schema & Migration|Tracked Records Schema & Migration]]
-- [[_COMMUNITY_Phase 11 Staff Selection Notes|Phase 11 Staff Selection Notes]]
-- [[_COMMUNITY_Graphify Reminder Hook|Graphify Reminder Hook]]
-- [[_COMMUNITY_Protect-Files Hook|Protect-Files Hook]]
-- [[_COMMUNITY_RTK Suggest Hook|RTK Suggest Hook]]
-- [[_COMMUNITY_Warn-Large-Files Hook|Warn-Large-Files Hook]]
-- [[_COMMUNITY_Welcome Message Constant|Welcome Message Constant]]
+- [[_COMMUNITY_Project Plan & Architecture|Project Plan & Architecture]]
+- [[_COMMUNITY_Pet Card UI|Pet Card UI]]
+- [[_COMMUNITY_Groq AI Chat|Groq AI Chat]]
+- [[_COMMUNITY_Claude Code Hooks|Claude Code Hooks]]
+- [[_COMMUNITY_Vaccine Reminder Sync|Vaccine Reminder Sync]]
+- [[_COMMUNITY_Hook Permissions Config|Hook Permissions Config]]
+- [[_COMMUNITY_Feature Ideas Backlog|Feature Ideas Backlog]]
+- [[_COMMUNITY_Clients Table Migration|Clients Table Migration]]
+- [[_COMMUNITY_Tracked Records Migration|Tracked Records Migration]]
+- [[_COMMUNITY_Welcome Message|Welcome Message]]
 - [[_COMMUNITY_Groq Client Instance|Groq Client Instance]]
-- [[_COMMUNITY_Pets Schema|Pets Schema]]
-- [[_COMMUNITY_Visit Extras Schema|Visit Extras Schema]]
-- [[_COMMUNITY_Ratings Schema|Ratings Schema]]
-- [[_COMMUNITY_Notifications Schema|Notifications Schema]]
-- [[_COMMUNITY_Chat Messages Schema|Chat Messages Schema]]
-- [[_COMMUNITY_Pet Date Formatting|Pet Date Formatting]]
-- [[_COMMUNITY_Ideas Doc|Ideas Doc]]
-- [[_COMMUNITY_Idea Photo Consultations|Idea: Photo Consultations]]
-- [[_COMMUNITY_Idea Google Calendar Integration|Idea: Google Calendar Integration]]
-- [[_COMMUNITY_Idea Location Buttons|Idea: Location Buttons]]
-- [[_COMMUNITY_Idea FAQ Quick Replies|Idea: FAQ Quick Replies]]
-- [[_COMMUNITY_Idea Popular Questions Stats|Idea: Popular Questions Stats]]
-- [[_COMMUNITY_Idea Appointment Reminders|Idea: Appointment Reminders]]
+- [[_COMMUNITY_Pets Table|Pets Table]]
+- [[_COMMUNITY_Visit Extras Table|Visit Extras Table]]
+- [[_COMMUNITY_Ratings Table|Ratings Table]]
+- [[_COMMUNITY_Notifications Table|Notifications Table]]
+- [[_COMMUNITY_Chat Messages Table|Chat Messages Table]]
+- [[_COMMUNITY_Ideas Backlog Doc|Ideas Backlog Doc]]
+- [[_COMMUNITY_Photo Consultation Idea|Photo Consultation Idea]]
+- [[_COMMUNITY_Calendar Integration Idea|Calendar Integration Idea]]
+- [[_COMMUNITY_Location Buttons Idea|Location Buttons Idea]]
+- [[_COMMUNITY_FAQ Quick-Reply Idea|FAQ Quick-Reply Idea]]
+- [[_COMMUNITY_Popular Questions Stats Idea|Popular Questions Stats Idea]]
+- [[_COMMUNITY_Reminder Notifications Idea|Reminder Notifications Idea]]
+- [[_COMMUNITY_Groq API Key Config|Groq API Key Config]]
+- [[_COMMUNITY_Altegio Partner Token Config|Altegio Partner Token Config]]
+- [[_COMMUNITY_Altegio User Token Config|Altegio User Token Config]]
+- [[_COMMUNITY_Supabase URL Config|Supabase URL Config]]
+- [[_COMMUNITY_Supabase Key Config|Supabase Key Config]]
+- [[_COMMUNITY_Editable Pet Fields Config|Editable Pet Fields Config]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `with_retry()` - 49 edges
-2. `handle_callback()` - 32 edges
-3. `AltegioError` - 29 edges
-4. `handle_callback()` - 27 edges
-5. `InlineKeyboardButton` - 22 edges
+1. `with_retry()` - 50 edges
+2. `AltegioError` - 33 edges
+3. `InlineKeyboardButton` - 23 edges
+4. `int` - 20 edges
+5. `handle_callback()` - 20 edges
 6. `Update` - 19 edges
 7. `int` - 19 edges
-8. `int` - 18 edges
+8. `register_handlers()` - 19 edges
 9. `DEFAULT_TYPE` - 18 edges
-10. `register_handlers()` - 18 edges
+10. `handle_callback()` - 18 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Altegio — єдине джерело правди` --rationale_for--> `upsert_tracked_record()`  [INFERRED]
+- `_location_name()` --semantically_similar_to--> `_location_name()`  [INFERRED] [semantically similar]
+  handlers/booking.py → services/altegio_webhook.py
+- `with_retry()` --semantically_similar_to--> `send_telegram_message()`  [INFERRED] [semantically similar]
+  handlers/common.py → services/notifications.py
+- `Altegio як єдине джерело правди (архітектурний принцип)` --rationale_for--> `upsert_tracked_record()`  [EXTRACTED]
   PLAN.md → db/client.py
-- `Фаза 4 — Автоматичні нагадування + оцінки` --conceptually_related_to--> `upsert_tracked_record()`  [INFERRED]
-  PLAN.md → db/client.py
-- `handle_callback()` --implements--> `Фаза 2 — Онлайн-запис на грумінг`  [EXTRACTED]
-  handlers/booking.py → PLAN.md
-- `Патерн booking_incomplete (за зразком form_incomplete)` --rationale_for--> `schedule_booking_incomplete()`  [EXTRACTED]
-  PLAN.md → services/notifications.py
-- `handle_callback()` --implements--> `Фаза 9 — Зв'язок з адміністратором`  [EXTRACTED]
-  handlers/booking.py → PLAN.md
+- `str` --uses--> `AltegioError`  [INFERRED]
+  handlers/registration.py → services/altegio.py
+- `bool` --uses--> `AltegioError`  [INFERRED]
+  handlers/registration.py → services/altegio.py
 
 ## Hyperedges (group relationships)
-- **Telegram Webhook Deployment Flow** — wsgi_application, webhook_bot_app, webhook_bot_webhook, set_webhook_set_webhook, config_telegram_token [INFERRED 0.85]
-- **Altegio Webhook Ingestion Flow** — webhook_bot_altegio_webhook_route, config_altegio_webhook_secret, services_altegio_webhook_process_event, db_schema_tracked_records, plan_phase_2 [INFERRED 0.85]
-- **PreToolUse Bash hook pipeline (block → suggest → rewrite)** — claude_settings, hooks_block_destructive_commands, hooks_rtk_suggest, hooks_rtk_rewrite [EXTRACTED 1.00]
-- **Registration ConversationHandler state flow (phone -> location -> name -> pets)** — handlers_registration_conversation, handlers_registration_start, handlers_registration_got_phone, handlers_registration_got_location, handlers_registration_got_name, handlers_registration_got_pet_name, handlers_registration_got_pet_breed, handlers_registration_got_pet_birth, handlers_registration_got_pet_weight, handlers_registration_got_pet_allergies, handlers_registration_got_pet_behavior, handlers_registration_got_pet_photo, handlers_registration_got_add_more, handlers_registration_cancel [EXTRACTED 1.00]
-- **my_bookings.py delegates client resolution and repeat-booking to booking.py** — handlers_my_bookings_handle_callback, handlers_booking_resolve_altegio_client_id, handlers_booking_start_from_pet_and_service, db_client_get_tracked_record_by_id [INFERRED 0.85]
-- **Telegram update dispatch chain wired in register_handlers (order-dependent)** — handlers_setup_register_handlers, handlers_registration_conversation, handlers_pets_edit_conversation, handlers_pets_show_pets, handlers_pets_handle_callback, handlers_booking_book_start, handlers_booking_price_start, handlers_booking_handle_callback, handlers_my_bookings_show_bookings, handlers_my_bookings_handle_callback, handlers_ai_chat_handle_message [EXTRACTED 1.00]
-- **Cron-driven booking_incomplete admin nudge flow** — handlers_booking__start, services_notifications_schedule_booking_incomplete, services_scheduler__handle_booking_incomplete, db_client_has_tracked_record_since [INFERRED 0.85]
+- **tracked_records створюються/оновлюються (бот або Altegio-вебхук) і синхронно планують reminder_2h/thanks_rating** — handlers_booking_confirm_booking, handlers_my_bookings_confirm_reschedule, services_altegio_webhook_handle, services_notifications_schedule_visit_notifications, db_client_upsert_tracked_record [INFERRED 0.85]
+- **Щоденний конвеєр: коментар Altegio → vaccine_due_date/vaccine_notified_due_date → нагадування о 7 днях** — services_vaccine_sync_sync_vaccine_dates, migrations_004_phase10_vaccine_due_date_vaccine_due_date_column, migrations_005_phase10_vaccine_notified_flag_notified_column, services_scheduler_run_daily_tasks [INFERRED 0.85]
+- **Флоу оцінки після візиту: thanks_rating → inline ⭐ → ratings → низька оцінка адмінам / 5+5 Google Maps** — services_scheduler_handle_thanks_rating, handlers_rating_handle_callback, db_client_create_rating, config_google_maps_review_urls [INFERRED 0.85]
 
-## Communities (45 total, 27 thin omitted)
+## Communities (40 total, 22 thin omitted)
 
-### Community 0 - "Client & Pet Data Layer (db/client.py)"
+### Community 0 - "Supabase Client CRUD"
 Cohesion: 0.05
-Nodes (59): ALTEGIO_LOCATIONS, create_client_record(), create_notification(), create_pet(), delete_pet(), get_client_by_id(), get_client_by_phone(), get_client_by_tg_id() (+51 more)
+Nodes (57): bool, GOOGLE_MAPS_REVIEW_URLS, create_notification(), create_pet(), create_rating(), delete_pending_notifications_for_record(), delete_pet(), get_client_by_phone() (+49 more)
 
-### Community 1 - "Booking Flow Core"
-Cohesion: 0.10
-Nodes (56): _ask_category, _ask_date, _ask_time, _category_keyboard, _confirm_booking, _format_price, _location_name, _select_service (+48 more)
-
-### Community 2 - "Common Validators & Formatting"
+### Community 1 - "Booking Flow (Дата/Час/Категорія)"
 Cohesion: 0.13
-Nodes (46): parse_weight(), float, int, Розібрати вагу в кг (кома або крапка). None, якщо не число або поза межами 0.1–1, Викликати Telegram-запит (reply_text/reply_location/...) з повторами.      Прокс, with_retry(), _ask_location, _ask_pet_photo (+38 more)
+Nodes (47): ALTEGIO_LOCATIONS, _ask_category(), _ask_date(), _ask_location(), _ask_service(), _ask_time(), book_start(), _category_keyboard() (+39 more)
 
-### Community 3 - "Booking Date/Time Handling"
-Cohesion: 0.09
-Nodes (44): datetime, Exception, bool, format_date_label(), parse_iso_datetime(), str, Спільні валідатори полів анкети та карток улюбленців., 2026-08-01' -> '01.08 Сб' (для кнопок вибору дати). (+36 more)
+### Community 2 - "Bot Entry Points & Setup"
+Cohesion: 0.06
+Nodes (43): Application, main() (polling entrypoint), TELEGRAM_TOKEN, main(), Запуск бота (polling, для локальної розробки)., Встановити webhook URL для бота., Отримати інформацію про поточний webhook. Повертає поточний url (None при помилц, --check: лише перевірити стан (нічого не змінює).      Локальний `bot.py` (polli (+35 more)
 
-### Community 4 - "Pet Card Editing"
-Cohesion: 0.12
-Nodes (34): date, parse_date(), bool, Розібрати дату у форматі ДД.ММ.РРРР. None, якщо формат/значення некоректні., _card_keyboard, _card_text, _delete_confirm_keyboard, _edit_keyboard (+26 more)
+### Community 3 - "Cron & Admin Utilities"
+Cohesion: 0.07
+Nodes (42): CRON_SECRET, HELP_PHONE, datetime, get_client_by_id(), get_cron_last_run(), Дата (ISO) останнього запуску щоденної задачі з цим ключем. None, якщо ще не зап, Позначити, що щоденна задача виконана сьогодні (ISO-дата)., Знайти клієнта за внутрішнім id. (+34 more)
 
-### Community 5 - "Altegio API Client"
-Cohesion: 0.15
-Nodes (34): _request, cancel_record(), create_client(), create_record(), find_available_staff_for_slot(), find_client_by_phone(), get_available_dates(), get_available_times() (+26 more)
+### Community 4 - "Pet Registration Flow"
+Cohesion: 0.14
+Nodes (43): parse_weight(), float, int, Розібрати вагу в кг (кома або крапка). None, якщо не число або поза межами 0.1–1, Викликати Telegram-запит (reply_text/reply_location/...) з повторами.      Прокс, with_retry(), add_pet_start(), _ask_location() (+35 more)
 
-### Community 6 - "Admin Notifications & Scheduler"
+### Community 5 - "Error Handling & Handler Setup"
 Cohesion: 0.08
-Nodes (29): ADMIN_GROUP_CHAT_ID, ADMIN_TOPIC_ID, CRON_SECRET, Патерн booking_incomplete (за зразком form_incomplete), notify_admins(), notify_admins_async(), bool, int (+21 more)
+Nodes (34): ADMIN_GROUP_CHAT_ID, ADMIN_TOPIC_ID, handle_error(), DEFAULT_TYPE, Глобальний обробник помилок PTB.  Без нього виняток, що вилетів з будь-якого han, Єдина точка реєстрації всіх handler-ів (webhook_bot.py і bot.py)., tracked_records.ends_at column, object (+26 more)
 
-### Community 7 - "Bot Entry Points (bot.py/webhook_bot.py)"
-Cohesion: 0.08
-Nodes (27): Application, main(), Запуск бота (polling, для локальної розробки)., altegio_webhook_route(), cron(), ensure_initialized(), ensure_initialized_with_retries(), index() (+19 more)
-
-### Community 8 - "AI Chat (Groq) Integration"
-Cohesion: 0.10
-Nodes (20): main() (polling entrypoint), SYSTEM_PROMPT, TELEGRAM_TOKEN, chat_histories (in-memory per-user dict), get_response(), Python dependencies list, python-3.11.0 runtime pin, check_webhook() (+12 more)
-
-### Community 9 - "Groq Client & Help Phone"
+### Community 6 - "Reschedule & Cancel Flow"
 Cohesion: 0.12
-Nodes (19): HELP_PHONE, clear_chat_history(), get_response(), Отримати відповідь від Groq для повідомлення користувача., Очистити історію чату для користувача., int, str, handle_message() (+11 more)
+Nodes (36): Exception, format_date_label(), 2026-08-01' -> '01.08 Сб' (для кнопок вибору дати)., _ask_reschedule_date(), _ask_reschedule_time(), _cancel_confirm_keyboard(), _confirm_reschedule(), _do_cancel() (+28 more)
 
-### Community 10 - "Altegio Webhook Ingestion"
+### Community 7 - "Deployment Guide"
+Cohesion: 0.06
+Nodes (35): 1. Завантажити зміни на GitHub (на Mac), 1. Напиши боту в Telegram, 2. Оновити код на PythonAnywhere, 2. Перевір webhook статус, 3. Зупинити старий polling бот (якщо працює), 3. Подивись логи Flask, 4. Налаштувати Web App на PythonAnywhere, 5. Налаштувати WSGI файл (+27 more)
+
+### Community 8 - "Altegio API Client"
+Cohesion: 0.12
+Nodes (34): create_client_record(), Створити порожній запис клієнта (реєстрацію заповнюємо покроково)., cancel_record(), create_record(), find_available_staff_for_slot(), find_client_by_phone(), get_available_dates(), get_available_times() (+26 more)
+
+### Community 9 - "Project Plan & Architecture"
+Cohesion: 0.06
+Nodes (30): 0. Поточний стан і ключове рішення, Altegio API — що використовуємо, code:block1 (grooming-telegram-bot/), code:block2 (clients        id, tg_user_id (unique), altegio_client_id, p), code:block3 (Фаза 0 ✅ (фундамент + Altegio API + вебхуки)), Scheduler: PythonAnywhere Scheduled Task → HTTP endpoint, UI бота: Inline-кнопки + ConversationHandler, Архітектурні рішення (+22 more)
+
+### Community 10 - "Pet Card UI"
 Cohesion: 0.20
-Nodes (14): ALTEGIO_WEBHOOK_SECRET, normalize_phone(), Привести телефон до формату +380XXXXXXXXX. None, якщо номер не схожий на українс, _format_dt, _handle, _location_name, _format_dt(), _handle() (+6 more)
+Nodes (23): _card_keyboard(), _card_text(), _delete_confirm_keyboard(), edit_cancel(), edit_field_start(), edit_field_value(), _edit_keyboard(), _format_date() (+15 more)
 
-### Community 11 - "Booking Breed-Fallback Suggestions"
-Cohesion: 0.18
-Nodes (12): _ask_service, _category_type_key, _generic_breed_services, _match_services_by_breed, _service_row, _show_generic_fallback, _show_level_suggestion, _show_service_page (+4 more)
+### Community 11 - "Groq AI Chat"
+Cohesion: 0.11
+Nodes (20): SYSTEM_PROMPT, Отримати відповідь від Groq для повідомлення користувача., Очистити історію чату для користувача., chat_histories (in-memory per-user dict), clear_chat_history(), get_response(), int, str (+12 more)
 
-### Community 13 - "Claude Settings Structure"
+### Community 12 - "Claude Code Hooks"
+Cohesion: 0.10
+Nodes (10): .claude/settings.json (hook registration), deny(), main(), output, _rtk_audit_log(), format-on-save.sh script, graphify-remind.sh script, protect-files.sh script (+2 more)
+
+### Community 13 - "Vaccine Reminder Sync"
+Cohesion: 0.15
+Nodes (16): date, get_clients_with_altegio_link(), Клієнти, прив'язані до Altegio (для щоденної синхронізації вакцинації, Фаза 10)., parse_date(), bool, date, Розібрати дату у форматі ДД.ММ.РРРР. None, якщо формат/значення некоректні., clients.vaccine_due_date column (+8 more)
+
+### Community 14 - "Hook Permissions Config"
 Cohesion: 0.18
 Nodes (10): hooks, PostToolUse, PreToolUse, SessionStart, permissions, allow, defaultMode, deny (+2 more)
 
-### Community 14 - "Altegio Pets Comment Sync"
-Cohesion: 0.24
-Nodes (10): _merge_comment, _pet_line, _merge_comment(), _pet_line(), bool, str, Синхронізація даних улюбленців у картку клієнта Altegio.  Altegio API не має окр, Зберегти текст адміністратора, замінити/додати лише блок бота. (+2 more)
-
-### Community 15 - "Webhook Registration Script"
-Cohesion: 0.29
-Nodes (7): check_webhook(), get_webhook_info(), Встановити webhook URL для бота., Отримати інформацію про поточний webhook. Повертає поточний url (None при помилц, --check: лише перевірити стан (нічого не змінює).      Локальний `bot.py` (polli, set_webhook(), str
-
-### Community 16 - "Read-Tool Guard Hook"
-Cohesion: 0.67
-Nodes (3): deny(), main(), output
+### Community 15 - "Feature Ideas Backlog"
+Cohesion: 0.25
+Nodes (7): 📍 Кнопки з локаціями салонів, 🔔 Нагадування про запис, 📸 Обробка фото, 📊 Статистика популярних запитань, 💬 Швидкі відповіді (FAQ кнопки), 💡 Ідеї для покращення бота Mr.Snoopy Grooming, 📅 Інтеграція з Google Calendar
 
 ## Ambiguous Edges - Review These
 - `python-3.11.0 runtime pin` → `WEBHOOK_SETUP.md (deployment guide)`  [AMBIGUOUS]
   runtime.txt · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **78 isolated node(s):** `str`, `int`, `bool`, `str`, `allow` (+73 more)
+- **110 isolated node(s):** `str`, `int`, `bool`, `str`, `allow` (+105 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **22 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `python-3.11.0 runtime pin` and `WEBHOOK_SETUP.md (deployment guide)`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `register_handlers()` connect `Bot Entry Points (bot.py/webhook_bot.py)` to `Booking Flow Core`, `Booking Date/Time Handling`, `Pet Card Editing`, `AI Chat (Groq) Integration`, `Groq Client & Help Phone`?**
-  _High betweenness centrality (0.210) - this node is a cross-community bridge._
-- **Why does `handle_callback()` connect `Booking Flow Core` to `Client & Pet Data Layer (db/client.py)`, `Common Validators & Formatting`, `Bot Entry Points (bot.py/webhook_bot.py)`, `Groq Client & Help Phone`, `Booking Breed-Fallback Suggestions`?**
-  _High betweenness centrality (0.154) - this node is a cross-community bridge._
-- **Why does `AltegioError` connect `Booking Date/Time Handling` to `Booking Flow Core`, `Common Validators & Formatting`, `Altegio API Client`, `Altegio Pets Comment Sync`?**
-  _High betweenness centrality (0.136) - this node is a cross-community bridge._
-- **Are the 21 inferred relationships involving `AltegioError` (e.g. with `DEFAULT_TYPE` and `str`) actually correct?**
-  _`AltegioError` has 21 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 10 inferred relationships involving `InlineKeyboardButton` (e.g. with `AltegioError` and `show_bookings()`) actually correct?**
-  _`InlineKeyboardButton` has 10 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `register_handlers()` connect `Bot Entry Points & Setup` to `Supabase Client CRUD`, `Booking Flow (Дата/Час/Категорія)`, `Error Handling & Handler Setup`, `Reschedule & Cancel Flow`, `Pet Card UI`, `Groq AI Chat`?**
+  _High betweenness centrality (0.170) - this node is a cross-community bridge._
+- **Why does `AltegioError` connect `Reschedule & Cancel Flow` to `Altegio API Client`, `Booking Flow (Дата/Час/Категорія)`, `Pet Registration Flow`, `Vaccine Reminder Sync`?**
+  _High betweenness centrality (0.105) - this node is a cross-community bridge._
+- **Why does `Фази реалізації` connect `Project Plan & Architecture` to `Cron & Admin Utilities`, `Vaccine Reminder Sync`?**
+  _High betweenness centrality (0.084) - this node is a cross-community bridge._
+- **Are the 24 inferred relationships involving `AltegioError` (e.g. with `DEFAULT_TYPE` and `str`) actually correct?**
+  _`AltegioError` has 24 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 11 inferred relationships involving `InlineKeyboardButton` (e.g. with `AltegioError` and `show_bookings()`) actually correct?**
+  _`InlineKeyboardButton` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `str`, `Отримати відповідь від Groq для повідомлення користувача.`, `Очистити історію чату для користувача.` to the rest of the system?**
-  _181 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _225 weakly-connected nodes found - possible documentation gaps or missing edges._
