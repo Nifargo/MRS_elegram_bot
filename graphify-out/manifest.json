@@ -1,6 +1,6 @@
 {
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/config.py": {
-    "mtime": 1784748437.4947507,
+    "mtime": 1784891924.0068746,
     "ast_hash": "06a88b67205abe5794f8114c6a5e5f0b",
     "semantic_hash": "06a88b67205abe5794f8114c6a5e5f0b"
   },
@@ -15,9 +15,9 @@
     "semantic_hash": "03fbfc548a5223ff1d99775a24e8a7f8"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/webhook_bot.py": {
-    "mtime": 1784581894.666385,
-    "ast_hash": "5dedc452c41f687c04bb16d1a0c9d7fb",
-    "semantic_hash": "5dedc452c41f687c04bb16d1a0c9d7fb"
+    "mtime": 1784825090.7024508,
+    "ast_hash": "30ac736173dd503320c2ca51572ce352",
+    "semantic_hash": "30ac736173dd503320c2ca51572ce352"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/set_webhook.py": {
     "mtime": 1784661095.9062812,
@@ -35,9 +35,9 @@
     "semantic_hash": "c3c2b08ac3c869842827751b67556925"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/client.py": {
-    "mtime": 1784749096.5148757,
-    "ast_hash": "a584bc7d49f5c6c5f5750ff9cd880e97",
-    "semantic_hash": "a584bc7d49f5c6c5f5750ff9cd880e97"
+    "mtime": 1784891924.0073552,
+    "ast_hash": "e2b86695448494c8903978718c0766d8",
+    "semantic_hash": "e2b86695448494c8903978718c0766d8"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/002_phase3_tracked_records_slot_fields.sql": {
     "mtime": 1784657482.594436,
@@ -60,12 +60,12 @@
     "semantic_hash": "23694bc95ec764711d118a7ebe1cd525"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/booking.py": {
-    "mtime": 1784791681.561655,
-    "ast_hash": "91b3b2530f1823b010c7f11cc6c0115c",
-    "semantic_hash": "91b3b2530f1823b010c7f11cc6c0115c"
+    "mtime": 1784891924.007718,
+    "ast_hash": "885392873f7f0d35d1b50a0f5ec1b840",
+    "semantic_hash": "885392873f7f0d35d1b50a0f5ec1b840"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/my_bookings.py": {
-    "mtime": 1784748222.4032865,
+    "mtime": 1784891924.0086024,
     "ast_hash": "6562179a5496db31e7abcccd2d2fcd81",
     "semantic_hash": "6562179a5496db31e7abcccd2d2fcd81"
   },
@@ -75,22 +75,22 @@
     "semantic_hash": "384c50e322d4fc7fc447c453cba531c8"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/pets.py": {
-    "mtime": 1784402467.813323,
-    "ast_hash": "d0947bbed62384d73fd4a1d77c2e3248",
-    "semantic_hash": "d0947bbed62384d73fd4a1d77c2e3248"
+    "mtime": 1784824245.535915,
+    "ast_hash": "fe52779891316421fa38f614d82da510",
+    "semantic_hash": "fe52779891316421fa38f614d82da510"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/setup.py": {
-    "mtime": 1784657734.405062,
-    "ast_hash": "f31bcc5c5ea84eba5fa8089e6f63a725",
-    "semantic_hash": "f31bcc5c5ea84eba5fa8089e6f63a725"
+    "mtime": 1784891924.0089777,
+    "ast_hash": "606869d8732c8e311eb5fa8d9e725b72",
+    "semantic_hash": "606869d8732c8e311eb5fa8d9e725b72"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/common.py": {
-    "mtime": 1784661768.0808766,
+    "mtime": 1784891924.0081563,
     "ast_hash": "41a382d41c1ab5cb9bc43f49c64437ed",
     "semantic_hash": "41a382d41c1ab5cb9bc43f49c64437ed"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/altegio_webhook.py": {
-    "mtime": 1784657734.4052413,
+    "mtime": 1784891924.009381,
     "ast_hash": "72439f63b9485712f82e6135faa72af9",
     "semantic_hash": "72439f63b9485712f82e6135faa72af9"
   },
@@ -105,14 +105,14 @@
     "semantic_hash": "5a3f882afdaa8e8dcc1f5d0ae8bfe3b2"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/notifications.py": {
-    "mtime": 1784749125.968994,
+    "mtime": 1784891924.0096703,
     "ast_hash": "5f47ce2a9d6761ebd9d919c2d60c4b20",
     "semantic_hash": "5f47ce2a9d6761ebd9d919c2d60c4b20"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/scheduler.py": {
-    "mtime": 1784749158.3524477,
-    "ast_hash": "8236fd84ceb9164981f4d162727aff49",
-    "semantic_hash": "8236fd84ceb9164981f4d162727aff49"
+    "mtime": 1784891924.0100389,
+    "ast_hash": "6c26fcba90b4d81ba2529898a984b137",
+    "semantic_hash": "6c26fcba90b4d81ba2529898a984b137"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/requirements.txt": {
     "mtime": 1784050987.7842135,
@@ -135,9 +135,9 @@
     "semantic_hash": "5b8c1d3c74ee4cfe7d8861fecf962029"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/PLAN.md": {
-    "mtime": 1784791708.4087899,
-    "ast_hash": "44903ba845f59cbbdbe43ff1b93952bc",
-    "semantic_hash": "44903ba845f59cbbdbe43ff1b93952bc"
+    "mtime": 1784891924.006549,
+    "ast_hash": "621cbb5d43c9c27b807b779e51497cff",
+    "semantic_hash": "621cbb5d43c9c27b807b779e51497cff"
   },
   "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/settings.json": {
     "mtime": 1784750641.8274288,
@@ -198,5 +198,25 @@
     "mtime": 1780946751.5010347,
     "ast_hash": "45d365e2138b94a3170487b4d47d9304",
     "semantic_hash": "45d365e2138b94a3170487b4d47d9304"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/004_phase10_vaccine_due_date.sql": {
+    "mtime": 1784828124.1896124,
+    "ast_hash": "eb12cb6aae4052a6d18947438d9e8201",
+    "semantic_hash": "eb12cb6aae4052a6d18947438d9e8201"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/005_phase10_vaccine_notified_flag.sql": {
+    "mtime": 1784828791.5933588,
+    "ast_hash": "44b9d045e47206b707a0fc957493c219",
+    "semantic_hash": "44b9d045e47206b707a0fc957493c219"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/error_handler.py": {
+    "mtime": 1784824093.4558604,
+    "ast_hash": "33189ba63dac78f9b8608baafb615d91",
+    "semantic_hash": "33189ba63dac78f9b8608baafb615d91"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/vaccine_sync.py": {
+    "mtime": 1784891864.3416626,
+    "ast_hash": "b3fae633747a7cca7050b17c5b4b4f04",
+    "semantic_hash": "b3fae633747a7cca7050b17c5b4b4f04"
   }
 }
