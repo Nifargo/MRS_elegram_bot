@@ -388,14 +388,15 @@ Telegram-фото зберігаємо як `file_id` (Telegram тримає ф�
 **Зроблено (код у master):**
 - ✅ `db/migrations/004_phase10_vaccine_due_date.sql` — `clients.vaccine_due_date` + таблиця `cron_state` (позначка останнього запуску щоденних задач, щоб диспетчер не ганяв синхронізацію на кожному 10-хвилинному тику)
 - ✅ `db/migrations/005_phase10_vaccine_notified_flag.sql` — `clients.vaccine_notified_due_date` (флаг дедупу нагадувань)
-- ✅ `services/vaccine_sync.py` — `sync_vaccine_dates()`: для кожного клієнта з `altegio_client_id`/`altegio_company_id` читає `altegio.get_client()`, парсить першу дату по всьому тексту коментаря; якщо дата змінилась — оновлює `vaccine_due_date`; якщо лишилось рівно 7 днів і нагадування на цю дату ще не надсилалось — шле напряму через `notifications.send_telegram_message()` і виставляє `vaccine_notified_due_date`
+- ✅ `services/vaccine_sync.py` — `sync_vaccine_dates()`: для кожного клієнта з `altegio_client_id`/`altegio_company_id` читає `altegio.get_client()`, парсить першу дату по всьому тексту коментаря; якщо дата змінилась — оновлює `vaccine_due_date`; якщо лишилось ≤7 днів і нагадування на цю дату ще не надсилалось — шле напряму через `notifications.send_telegram_message()` і виставляє `vaccine_notified_due_date`
+  - **Виправлено (2026-07-24):** початково умова була "рівно 7 днів" (`==`) — живий тест (2026-07-23, тестовому клієнту дописано дату 30.07) показав вразливість: код задеплоєно ввечері 23.07, вже після вікна `VACCINE_SYNC_HOUR=10:00`, тож перший запуск синку відбувся аж 24.07, коли лишилось уже 6 днів — вікно "рівно 7" пройшло непоміченим, клієнт не отримав би нагадування взагалі (флаг дедупу не дає другого шансу на ту саму дату). Замінено на `≤7` (`due_date - today > 7 → skip`): синк наздоганяє пропущений день на наступному запуску; дедуп-флаг лишається без змін і так само захищає від повторної відправки того ж дня.
 - ✅ `db/client.py`: `get_clients_with_altegio_link()`, `get_cron_last_run()`/`set_cron_last_run()`
 - ✅ `services/scheduler.py`: `_run_daily_tasks()` — перший виклик `/cron` після 10:00 (Київ, `VACCINE_SYNC_HOUR`), для якого сьогодні ще не було запуску (`cron_state`), викликає `sync_vaccine_dates()`; окремого обробника в `_HANDLERS` немає — відправка йде напряму з `vaccine_sync.py`
 
 **Лишилось до ✅:**
 - ✅ `db/migrations/004_phase10_vaccine_due_date.sql` виконано в Supabase
-- ⬜ Виконати `db/migrations/005_phase10_vaccine_notified_flag.sql` у Supabase SQL Editor
-- ⬜ Живий тест: тестовому клієнту в Altegio дописати дату в коментар (сьогодні + 7 днів) → дочекатись/симулювати виклик `/cron` після 10:00 → перевірити `clients.vaccine_due_date`/`vaccine_notified_due_date` в Supabase і що прийшло повідомлення в Telegram; повторний запуск того ж дня — переконатись, що вдруге не шле
+- ✅ `db/migrations/005_phase10_vaccine_notified_flag.sql` виконано в Supabase
+- 🟨 Живий тест (2026-07-23, клієнт András, дата 30.07): виявив баг вікна "рівно 7" (див. вище) — нагадування не прийшло. Фікс задеплоєно 2026-07-24; `cron_state` дозволяє лише один запуск на день, тож перевірка на реальному `/cron` — завтра, 2026-07-25
 
 **Критерій готовності:** адмін пише дату в коментар клієнта в Altegio → наступного ранку дата в Supabase → за 7 днів до дати клієнт отримує одне нагадування в Telegram.
 
