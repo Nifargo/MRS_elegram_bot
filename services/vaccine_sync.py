@@ -36,8 +36,10 @@ def _parse_due_date(comment: str) -> date | None:
 
 
 def sync_vaccine_dates() -> int:
-    """Оновити vaccine_due_date і надіслати нагадування тим, кому лишилось рівно 7 днів.
+    """Оновити vaccine_due_date і надіслати нагадування тим, кому лишилось ≤7 днів.
 
+    "≤7", а не рівно 7: якщо синк пропустить точний день (деплой, збій cron-тика),
+    нагадування наздоганяється на наступному запуску, а не губиться назавжди.
     Флаг `vaccine_notified_due_date` захищає від повторного нагадування на ту саму
     дату — спрацьовує знову лише тоді, коли адмін впише нову дату вакцинації.
     """
@@ -58,7 +60,7 @@ def sync_vaccine_dates() -> int:
             db.update_client(c["id"], {"vaccine_due_date": new_due})
             c = {**c, "vaccine_due_date": new_due}
 
-        if due_date is None or (due_date - today).days != VACCINE_REMINDER_DAYS_BEFORE:
+        if due_date is None or (due_date - today).days > VACCINE_REMINDER_DAYS_BEFORE:
             continue
         if c.get("vaccine_notified_due_date") == new_due:
             continue
