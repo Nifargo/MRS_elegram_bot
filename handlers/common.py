@@ -66,7 +66,7 @@ def parse_weight(text: str) -> float | None:
     return round(weight, 2)
 
 
-async def with_retry(func, *args, attempts: int = 3, delay: float = 1.5, **kwargs):
+async def with_retry(func, *args, attempts: int = 7, delay: float = 1.5, **kwargs):
     """Викликати Telegram-запит (reply_text/reply_location/...) з повторами.
 
     Проксі PythonAnywhere інколи віддає транзиентний 503 на вихідні виклики
