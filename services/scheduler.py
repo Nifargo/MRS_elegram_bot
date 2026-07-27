@@ -92,7 +92,10 @@ def _run_daily_tasks() -> None:
 
     Диспетчер розрізняє «щоденне» від «кожні 10 хв» через cron_state: перший
     виклик /cron після VACCINE_SYNC_HOUR (Київ), для якого ще не було запуску
-    сьогодні, і виконує задачу; решта тиків того ж дня — no-op.
+    сьогодні, і виконує задачу. `cron_state` позначається виконаним лише при
+    повному успіху — якщо стався збій (виняток або хоч один клієнт не
+    оброблений), день НЕ фіксується, і задача повториться на наступному тику
+    того ж дня, а не чекатиме до завтра.
     """
     now = datetime.now(KYIV_TZ)
     if now.hour < VACCINE_SYNC_HOUR:
@@ -101,10 +104,12 @@ def _run_daily_tasks() -> None:
     if db.get_cron_last_run(VACCINE_SYNC_KEY) == today:
         return
     try:
-        vaccine_sync.sync_vaccine_dates()
+        success = vaccine_sync.sync_vaccine_dates()
     except Exception as e:
         logger.error(f"❌ Помилка щоденної синхронізації вакцинації: {e}", exc_info=True)
-    db.set_cron_last_run(VACCINE_SYNC_KEY, today)
+        success = False
+    if success:
+        db.set_cron_last_run(VACCINE_SYNC_KEY, today)
 
 
 def run_due(application=None) -> int:

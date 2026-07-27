@@ -35,23 +35,31 @@ def _parse_due_date(comment: str) -> date | None:
         return None
 
 
-def sync_vaccine_dates() -> int:
+def sync_vaccine_dates() -> bool:
     """Оновити vaccine_due_date і надіслати нагадування тим, кому лишилось ≤7 днів.
 
     "≤7", а не рівно 7: якщо синк пропустить точний день (деплой, збій cron-тика),
     нагадування наздоганяється на наступному запуску, а не губиться назавжди.
     Флаг `vaccine_notified_due_date` захищає від повторного нагадування на ту саму
     дату — спрацьовує знову лише тоді, коли адмін впише нову дату вакцинації.
+
+    Повертає True, якщо всі клієнти оброблені без збоїв (виклик scheduler.py
+    позначає `cron_state` як виконаний лише в цьому випадку) — False, якщо
+    хоч один клієнт впав (Altegio недоступний або відправка Telegram не
+    пройшла): диспетчер тоді НЕ фіксує день як виконаний, і повтор
+    відбудеться на наступному тику того ж дня, а не завтра.
     """
     clients = db.get_clients_with_altegio_link()
     today = datetime.now(KYIV_TZ).date()
     notified = 0
+    all_ok = True
 
     for c in clients:
         try:
             remote = altegio.get_client(c["altegio_company_id"], c["altegio_client_id"])
         except AltegioError as e:
             logger.warning(f"Не вдалося прочитати клієнта Altegio (client_id={c['id']}): {e}")
+            all_ok = False
             continue
 
         due_date = _parse_due_date(remote.get("comment") or "")
@@ -69,6 +77,8 @@ def sync_vaccine_dates() -> int:
         if notifications.send_telegram_message(c["tg_user_id"], text):
             db.update_client(c["id"], {"vaccine_notified_due_date": new_due})
             notified += 1
+        else:
+            all_ok = False
 
-    logger.info(f"💉 Синхронізація вакцинації: перевірено {len(clients)}, надіслано нагадувань {notified}")
-    return notified
+    logger.info(f"💉 Синхронізація вакцинації: перевірено {len(clients)}, надіслано нагадувань {notified}{'' if all_ok else ' (є збої — повтор на наступному тику)'}")
+    return all_ok
