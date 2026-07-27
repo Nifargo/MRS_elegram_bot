@@ -64,6 +64,7 @@ def _handle(payload: dict) -> None:
     services = data.get("services") or []
     service_title = (services[0].get("title") if services else None) or data.get("service_title") or ""
     starts_at = data.get("datetime") or data.get("date")
+    staff_id = data.get("staff_id") or (data.get("staff") or {}).get("id")
 
     existing = db.get_tracked_record(record_id)
     fields = {
@@ -74,6 +75,7 @@ def _handle(payload: dict) -> None:
         "status": "cancelled" if data.get("attendance") == -1 else "active",
         "company_id": company_id or None,
         "altegio_service_id": services[0].get("id") if services else None,
+        "staff_id": staff_id,
         "raw_json": data,
     }
 
@@ -85,13 +87,17 @@ def _handle(payload: dict) -> None:
         db.upsert_tracked_record(fields)
         return
 
-    # Новий запис, якого бот не робив (зроблений адміністратором в Altegio) —
-    # шукаємо клієнта по телефону і пушимо підтвердження.
+    # Новий запис, якого бот не робив (адміністратор в Altegio або клієнт через
+    # зовнішній Altegio-віджет) — шукаємо клієнта по телефону і пушимо підтвердження.
     phone = normalize_phone((data.get("client") or {}).get("phone") or "")
     matched_client = db.get_client_by_phone(phone) if phone else None
 
     fields["client_id"] = matched_client["id"] if matched_client else None
-    fields["pet_id"] = None
+    # Віджет не передає, якого саме улюбленця обрав клієнт — визначаємо
+    # однозначно лише коли в клієнта один улюбленець; інакше «Повторити
+    # останній запис» (handlers/my_bookings.py) сам перепитає при потребі.
+    pets = db.get_pets_by_client(matched_client["id"]) if matched_client else []
+    fields["pet_id"] = pets[0]["id"] if len(pets) == 1 else None
     db.upsert_tracked_record(fields)
 
     if matched_client:

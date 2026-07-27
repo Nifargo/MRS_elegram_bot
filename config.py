@@ -35,6 +35,10 @@ ADMIN_TOPIC_ID = int(os.getenv("ADMIN_TOPIC_ID")) if os.getenv("ADMIN_TOPIC_ID")
 # Номер салону для кнопки "🆘 Допомога" (Фаза 9)
 HELP_PHONE = "+380960080482"
 
+# Пряме посилання на онлайн-запис Altegio — єдиний віджет на всі 3 філії,
+# клієнт сам обирає локацію/послугу/дату/час всередині нього.
+ALTEGIO_BOOKING_WIDGET_URL = "https://n1358931.alteg.io/"
+
 SYSTEM_PROMPT = """
 Ти - досвідчений консультант грумінг-салону "Mr.Snoopy Grooming".
 Ти допомагаєш клієнтам з питаннями:
