@@ -3,7 +3,10 @@
 На відміну від handlers/booking.py (створення нового запису), тут маємо справу
 з уже існуючими tracked_records. Стан переносу живе у
 context.user_data["reschedule"] (той самий підхід, що і context.user_data["booking"]
-у booking.py / чернетка редагування в pets.py).
+у booking.py / чернетка редагування в pets.py). Якщо в запису відомий майстер
+(tracked_records.staff_id — заповнюється вебхуком незалежно від джерела
+запису, включно з зовнішнім віджетом), перенос пропонує дати/час тільки для
+нього; інакше (старі записи без staff_id) — «будь-який вільний», як і раніше.
 
 Callback data:
   mb_reschedule:<id>       — почати перенос запису (id — tracked_records.id)
@@ -16,6 +19,7 @@ Callback data:
   mb_cancel_confirm:<id>   — підтвердити скасування
   mb_cancel_abort          — назад без дій
   mb_repeat                — повторити останній запис
+  mb_repeat_pet:<id>       — обрати улюбленця для повтору (якщо їх кілька)
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -111,7 +115,7 @@ async def show_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def _ask_reschedule_date(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     r = context.user_data["reschedule"]
     try:
-        dates = altegio.get_available_dates(r["company_id"], staff_id=0, service_ids=[r["service_id"]])
+        dates = altegio.get_available_dates(r["company_id"], staff_id=r.get("staff_id") or 0, service_ids=[r["service_id"]])
     except AltegioError as e:
         logger.error(f"Altegio дати {r['company_id']}: {e}")
         await with_retry(message.reply_text, "Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘.")
@@ -153,12 +157,13 @@ async def _show_reschedule_date_page(message, context: ContextTypes.DEFAULT_TYPE
 async def _ask_reschedule_time(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     r = context.user_data["reschedule"]
     try:
-        times = altegio.get_available_times(r["company_id"], 0, r["date"], service_ids=[r["service_id"]])
+        times = altegio.get_available_times(r["company_id"], r.get("staff_id") or 0, r["date"], service_ids=[r["service_id"]])
     except AltegioError as e:
         logger.error(f"Altegio час {r['company_id']} {r['date']}: {e}")
         await with_retry(message.reply_text, "Не вдалося завантажити вільний час 😔 Спробуйте пізніше або зверніться 🆘.")
         return
 
+    r["times"] = times
     time_strs = [t["time"] for t in times]
     if not time_strs:
         await with_retry(message.reply_text, "На цю дату вже немає вільного часу 😔 Оберіть іншу дату.")
@@ -189,12 +194,18 @@ async def _confirm_reschedule(message, context: ContextTypes.DEFAULT_TYPE) -> No
     company_id, service_id = r["company_id"], r["service_id"]
     date_str, time_str = r["date"], r["time"]
 
-    try:
-        slot = altegio.find_available_staff_for_slot(company_id, service_id, date_str, time_str)
-    except AltegioError as e:
-        logger.error(f"Altegio пошук майстра {company_id}: {e}")
-        await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
-        return
+    if r.get("staff_id"):
+        # Перенос до того самого майстра — _ask_reschedule_time вже запитував
+        # саме його слоти, тож просто беремо тривалість з уже отриманої відповіді.
+        slot_time = next((t for t in r.get("times", []) if t["time"] == time_str), None)
+        slot = (r["staff_id"], slot_time["seance_length"]) if slot_time else None
+    else:
+        try:
+            slot = altegio.find_available_staff_for_slot(company_id, service_id, date_str, time_str)
+        except AltegioError as e:
+            logger.error(f"Altegio пошук майстра {company_id}: {e}")
+            await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
+            return
 
     if slot is None:
         await with_retry(message.reply_text, "На жаль, цей час щойно зайняли 😔 Оберіть інший час.")
@@ -222,6 +233,7 @@ async def _confirm_reschedule(message, context: ContextTypes.DEFAULT_TYPE) -> No
         "altegio_record_id": r["altegio_record_id"],
         "starts_at": to_kyiv_iso(date_str, time_str),
         "status": "active",
+        "staff_id": staff_id,
     })
 
     d = datetime.fromisoformat(date_str)
@@ -266,11 +278,6 @@ async def _repeat_last_booking(message, context: ContextTypes.DEFAULT_TYPE, clie
         await with_retry(message.reply_text, "Не вдалося визначити деталі минулого запису 😔 Оберіть послугу заново через «📅 Записатись».")
         return
 
-    pet = db.get_pet(last["pet_id"]) if last.get("pet_id") else None
-    if pet is None:
-        await with_retry(message.reply_text, "Улюбленця з цього запису не знайдено — оберіть послугу заново через «📅 Записатись».")
-        return
-
     company_id = last["company_id"]
     try:
         services = altegio.get_services(company_id)
@@ -290,9 +297,37 @@ async def _repeat_last_booking(message, context: ContextTypes.DEFAULT_TYPE, clie
         "price_min": service.get("price_min"),
         "price_max": service.get("price_max"),
     }
-    await booking.start_from_pet_and_service(
-        message, context, client_id=client_id, pet=pet, company_id=company_id, service=slim_service,
-    )
+
+    staff_id = last.get("staff_id")
+
+    pet = db.get_pet(last["pet_id"]) if last.get("pet_id") else None
+    if pet is not None:
+        await booking.start_from_pet_and_service(
+            message, context, client_id=client_id, pet=pet, company_id=company_id, service=slim_service,
+            staff_id=staff_id,
+        )
+        return
+
+    # Останній запис зроблено через зовнішній Altegio-віджет без явної
+    # прив'язки улюбленця (у клієнта їх кілька — services/altegio_webhook.py
+    # автовизначає pet_id лише коли улюбленець один) — перепитуємо.
+    pets = db.get_pets_by_client(client_id)
+    if not pets:
+        await with_retry(message.reply_text, "Не знайшов улюбленця 😔 Оберіть послугу заново через «📅 Записатись».")
+        return
+    if len(pets) == 1:
+        await booking.start_from_pet_and_service(
+            message, context, client_id=client_id, pet=pets[0], company_id=company_id, service=slim_service,
+            staff_id=staff_id,
+        )
+        return
+
+    context.user_data["repeat_pending"] = {
+        "client_id": client_id, "company_id": company_id, "service": slim_service, "staff_id": staff_id,
+    }
+    rows = [[InlineKeyboardButton(f"🐾 {p['name']}", callback_data=f"mb_repeat_pet:{p['id']}")] for p in pets]
+    rows.append([CANCEL_BUTTON])
+    await with_retry(message.reply_text, "Кого записуємо? 🐾", reply_markup=InlineKeyboardMarkup(rows))
 
 
 # --- Диспетчер ---
@@ -304,6 +339,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if data == "mb_resch_cancel":
         context.user_data.pop("reschedule", None)
+        context.user_data.pop("repeat_pending", None)
         await with_retry(query.message.reply_text, "Скасовано.", reply_markup=MAIN_MENU)
         return
 
@@ -320,6 +356,23 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     action, _, rest = data.partition(":")
+
+    if action == "mb_repeat_pet":
+        pending = context.user_data.pop("repeat_pending", None)
+        if pending is None:
+            await with_retry(query.message.reply_text, "Сесію повтору втрачено — почніть спочатку.")
+            return
+        pet = db.get_pet(int(rest))
+        if pet is None or pet["client_id"] != pending["client_id"]:
+            await with_retry(query.message.reply_text, "Не знайшов улюбленця 😔")
+            return
+        await booking.start_from_pet_and_service(
+            query.message, context,
+            client_id=pending["client_id"], pet=pet,
+            company_id=pending["company_id"], service=pending["service"],
+            staff_id=pending.get("staff_id"),
+        )
+        return
 
     if action == "mb_reschedule":
         record = _get_own_record(update.effective_user.id, int(rest))
@@ -338,7 +391,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "company_id": record["company_id"],
             "service_id": record["altegio_service_id"],
             "client_id": record["client_id"],
+            "staff_id": record.get("staff_id"),
         }
+        if record.get("staff_id"):
+            name = booking.staff_name(record["company_id"], record["staff_id"])
+            if name:
+                await with_retry(query.message.reply_text, f"Пропонуємо нові дати для майстра {name}:")
         await _ask_reschedule_date(query.message, context)
         return
 
