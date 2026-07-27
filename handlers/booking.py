@@ -617,7 +617,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     b = context.user_data.get("booking")
     if b is None:
         await with_retry(query.message.reply_text,
-            "Сесію запису втрачено — почніть спочатку кнопкою «📅 Записатись».",
+            "Сесію втрачено — почніть спочатку кнопкою «💰 Дізнатись вартість».",
             reply_markup=MAIN_MENU,
         )
         return
