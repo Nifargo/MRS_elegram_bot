@@ -1,4 +1,4 @@
-"""«🔜 Найближчі віконця» — запис до конкретного грумера, без переходу на Altegio-віджет.
+"""«🔥 Найближчі віконця» — запис до конкретного грумера, без переходу на Altegio-віджет.
 
 На відміну від handlers/booking.py (зовнішній віджет, клієнт сам обирає
 філію/послугу/дату/час), тут клієнт спершу обирає грумера — і бачить лише ті
@@ -100,7 +100,7 @@ def _slot_label(slot: dict) -> str:
 # --- Вхід у флоу ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Кнопка меню «🔜 Найближчі віконця»."""
+    """Кнопка меню «🔥 Найближчі віконця»."""
     result = await booking.registered_client_pets(update)
     if result is None:
         return
@@ -111,7 +111,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.warning(f"Не вдалося запланувати booking_incomplete (client_id={client['id']}): {e}")
 
-    await with_retry(update.message.reply_text, "🔜 Шукаємо найближчі вільні віконця...", reply_markup=ReplyKeyboardRemove())
+    await with_retry(update.message.reply_text, "🔥 Шукаємо найближчі вільні віконця...", reply_markup=ReplyKeyboardRemove())
 
     context.user_data["nearest"] = {"client_id": client["id"]}
 
@@ -373,7 +373,7 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
     if slot is None:
-        await with_retry(message.reply_text, "На жаль, цей час щойно зайняли 😔 Спробуйте пошук ще раз кнопкою «🔜 Найближчі віконця».")
+        await with_retry(message.reply_text, "На жаль, цей час щойно зайняли 😔 Спробуйте пошук ще раз кнопкою «🔥 Найближчі віконця».")
         context.user_data.pop("nearest", None)
         return
     staff_id, seance_length = slot
@@ -449,7 +449,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     n = context.user_data.get("nearest")
     if n is None:
         await with_retry(query.message.reply_text,
-            "Сесію втрачено — почніть спочатку кнопкою «🔜 Найближчі віконця».",
+            "Сесію втрачено — почніть спочатку кнопкою «🔥 Найближчі віконця».",
             reply_markup=MAIN_MENU,
         )
         return

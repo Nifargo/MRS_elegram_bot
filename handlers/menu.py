@@ -6,7 +6,7 @@ from config import HELP_PHONE
 
 BTN_BOOK = "📅 Записатись"
 BTN_PRICE = "💰 Дізнатись вартість"
-BTN_NEAREST = "🔜 Найближчі віконця"
+BTN_NEAREST = "🔥 Найближчі віконця"
 BTN_MY_BOOKINGS = "🗓 Мої записи"
 BTN_MY_PETS = "🐾 Мої улюбленці"
 BTN_HISTORY = "✂️ Історія"

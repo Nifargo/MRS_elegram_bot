@@ -7,7 +7,7 @@ from threading import Thread
 import time
 
 from config import TELEGRAM_TOKEN, CRON_SECRET, ALTEGIO_WEBHOOK_SECRET
-from handlers.setup import register_handlers
+from handlers.setup import post_init, register_handlers
 from services import altegio_webhook, scheduler
 
 # Налаштування логування
@@ -58,6 +58,9 @@ async def initialize_application():
     # Ініціалізувати
     await application.initialize()
     await application.start()
+    # Manual initialize()/start() (не run_webhook()) не викликає post_init самі —
+    # тому запускаємо його явно.
+    await post_init(application)
 
     logger.info("✅ Telegram Application ініціалізовано!")
 

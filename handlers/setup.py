@@ -1,9 +1,22 @@
 """Єдина точка реєстрації всіх handler-ів (webhook_bot.py і bot.py)."""
+# from telegram import BotCommand, MenuButtonCommands
 from telegram.ext import Application, CallbackQueryHandler, MessageHandler, filters
 
 from handlers import ai_chat, booking, my_bookings, nearest_slots, pets, registration
 from handlers.error_handler import handle_error
 from handlers.menu import BTN_BOOK, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_NEAREST, BTN_PRICE
+
+
+async def post_init(application: Application) -> None:
+    """Кнопка «Меню» біля поля вводу — вимкнено (для нового чату Telegram і так
+    показує нативну кнопку «СТАРТ»; розкоментувати, якщо знадобиться меню команд
+    і посеред флоу з reply/inline-клавіатурою).
+    """
+    # await application.bot.set_my_commands([
+    #     BotCommand("start", "🐾 Почати або перезапустити анкету"),
+    #     BotCommand("cancel", "❌ Скасувати поточну дію"),
+    # ])
+    # await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
 
 
 def register_handlers(application: Application) -> None:
