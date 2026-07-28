@@ -20,7 +20,7 @@ from telegram.ext import (
 )
 
 from db import client as db
-from handlers.common import parse_date, parse_weight
+from handlers.common import parse_date, parse_weight, with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio_sync
 
@@ -142,7 +142,7 @@ async def show_pets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обробка pet_list / pet_show / pet_edit."""
     query = update.callback_query
-    await query.answer()
+    await with_retry(query.answer)
     data = query.data
 
     if data == "pet_list":
@@ -190,7 +190,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
-    await query.answer()
+    await with_retry(query.answer)
 
     _, pet_id, field = query.data.split(":", 2)
     pet = _get_own_pet(update.effective_user.id, int(pet_id))

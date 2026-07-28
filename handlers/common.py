@@ -4,6 +4,7 @@ import logging
 import re
 from datetime import date, datetime
 
+import httpx
 from telegram.error import NetworkError
 
 from services.notifications import KYIV_TZ
@@ -67,16 +68,19 @@ def parse_weight(text: str) -> float | None:
 
 
 async def with_retry(func, *args, attempts: int = 7, delay: float = 1.5, **kwargs):
-    """Викликати Telegram-запит (reply_text/reply_location/...) з повторами.
+    """Викликати Telegram-запит (reply_text/reply_location/query.answer/...) з повторами.
 
     Проксі PythonAnywhere інколи віддає транзиентний 503 на вихідні виклики
     api.telegram.org — без повтору клієнт бачить «тишу» посеред анкети/запису,
-    хоча його попередня відповідь вже збережена в БД.
+    хоча його попередня відповідь вже збережена в БД. Ловимо і httpx.HTTPError
+    окремо від telegram.error.NetworkError — живий інцидент (2026-07-27) показав,
+    що PTB 21 інколи не встигає обгорнути httpx.ProxyError у NetworkError,
+    і сирий виняток летить повз with_retry прямо в глобальний error_handler.
     """
     for attempt in range(1, attempts + 1):
         try:
             return await func(*args, **kwargs)
-        except NetworkError as e:
+        except (NetworkError, httpx.HTTPError) as e:
             if attempt == attempts:
                 raise
             logger.warning(

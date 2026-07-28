@@ -334,7 +334,7 @@ async def _repeat_last_booking(message, context: ContextTypes.DEFAULT_TYPE, clie
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await with_retry(query.answer)
     data = query.data
 
     if data == "mb_resch_cancel":

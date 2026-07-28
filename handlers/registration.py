@@ -188,7 +188,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def add_pet_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Callback «➕ Додати улюбленця» зі списку улюбленців (клієнт вже зареєстрований)."""
     query = update.callback_query
-    await query.answer()
+    await with_retry(query.answer)
 
     client = db.get_client_by_tg_id(update.effective_user.id)
     if client is None or not client["registration_done"]:
