@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import Application
 
 from config import TELEGRAM_TOKEN
-from handlers.setup import register_handlers
+from handlers.setup import post_init, register_handlers
 
 # Налаштування логування
 logging.basicConfig(
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     """Запуск бота (polling, для локальної розробки)."""
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application = Application.builder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
     # Ті самі обробники, що й у webhook_bot.py
     register_handlers(application)
