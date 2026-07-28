@@ -6,6 +6,7 @@ from config import HELP_PHONE
 
 BTN_BOOK = "📅 Записатись"
 BTN_PRICE = "💰 Дізнатись вартість"
+BTN_NEAREST = "🔜 Найближчі віконця"
 BTN_MY_BOOKINGS = "🗓 Мої записи"
 BTN_MY_PETS = "🐾 Мої улюбленці"
 BTN_HISTORY = "✂️ Історія"
@@ -16,6 +17,7 @@ BTN_HELP = "🆘 Допомога"
 MAIN_MENU = ReplyKeyboardMarkup(
     [
         [BTN_BOOK, BTN_PRICE],
+        [BTN_NEAREST],
         [BTN_MY_BOOKINGS, BTN_MY_PETS],
         [BTN_HISTORY, BTN_BONUSES],
         [BTN_AI, BTN_HELP],
@@ -26,6 +28,7 @@ MAIN_MENU = ReplyKeyboardMarkup(
 # Кнопки, чий функціонал ще не реалізовано (наступні фази плану).
 # BTN_MY_PETS обробляється в handlers/pets.py (Фаза 1).
 # BTN_BOOK/BTN_PRICE обробляються в handlers/booking.py (Фаза 2).
+# BTN_NEAREST обробляється в handlers/nearest_slots.py (Фаза 11).
 # BTN_MY_BOOKINGS обробляється в handlers/my_bookings.py (Фаза 3).
 # BTN_HELP обробляється нижче (Фаза 9).
 _PLACEHOLDER_BUTTONS = {BTN_HISTORY, BTN_BONUSES}

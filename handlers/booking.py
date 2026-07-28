@@ -65,7 +65,7 @@ CANCEL_BUTTON = InlineKeyboardButton("❌ Скасувати", callback_data="bk
 
 # --- Форматування ---
 
-def _format_price(service: dict) -> str:
+def format_price(service: dict) -> str:
     lo, hi = service.get("price_min"), service.get("price_max")
     if not lo:
         return "ціна за запитом"
@@ -74,7 +74,7 @@ def _format_price(service: dict) -> str:
     return f"{lo} грн"
 
 
-def _location_name(company_id: str) -> str:
+def location_name(company_id: str) -> str:
     return next((name for name, cid in ALTEGIO_LOCATIONS.items() if cid == company_id), company_id)
 
 
@@ -88,7 +88,7 @@ def staff_name(company_id: str, staff_id: int) -> str | None:
     return member.get("name") if member else None
 
 
-def _slim_service(service: dict) -> dict:
+def slim_service(service: dict) -> dict:
     return {
         "id": service["id"],
         "title": service["title"],
@@ -113,7 +113,7 @@ def _weight_matches(title_lower: str, weight: float) -> bool:
     return False
 
 
-def _match_services_by_breed(breed: str, services: list[dict], weight: float | None) -> list[dict]:
+def match_services_by_breed(breed: str, services: list[dict], weight: float | None) -> list[dict]:
     breed_lower = breed.lower().strip()
     if not breed_lower:
         return []
@@ -146,7 +146,7 @@ def _sibling_categories(current_cat: dict, categories: list[dict]) -> list[dict]
     return [c for c in categories if c["id"] != current_cat["id"] and _category_type_key(c["title"]) == key]
 
 
-def _generic_breed_services(cat_services: list[dict]) -> list[dict]:
+def generic_breed_services(cat_services: list[dict]) -> list[dict]:
     return [s for s in cat_services if s["title"].lower().startswith("інші породи")]
 
 
@@ -165,7 +165,7 @@ def _category_keyboard(categories: list[dict]) -> InlineKeyboardMarkup:
 
 
 def _service_row(service: dict) -> list[InlineKeyboardButton]:
-    return [InlineKeyboardButton(f"{service['title']} — {_format_price(service)}", callback_data=f"bk_svc:{service['id']}")]
+    return [InlineKeyboardButton(f"{service['title']} — {format_price(service)}", callback_data=f"bk_svc:{service['id']}")]
 
 
 def _booking_link_keyboard(extra_rows: list[list[InlineKeyboardButton]] | None = None) -> InlineKeyboardMarkup:
@@ -174,7 +174,7 @@ def _booking_link_keyboard(extra_rows: list[list[InlineKeyboardButton]] | None =
     return InlineKeyboardMarkup(rows)
 
 
-async def _registered_client_pets(update: Update) -> tuple[dict, list[dict]] | None:
+async def registered_client_pets(update: Update) -> tuple[dict, list[dict]] | None:
     """(client, pets), якщо анкета заповнена і є хоча б один улюбленець — інакше None (уже відповівши клієнту)."""
     client = db.get_client_by_tg_id(update.effective_user.id)
     if client is None or not client["registration_done"]:
@@ -195,7 +195,7 @@ async def _registered_client_pets(update: Update) -> tuple[dict, list[dict]] | N
 
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Кнопка меню «📅 Записатись» — пряме посилання на Altegio-віджет."""
-    result = await _registered_client_pets(update)
+    result = await registered_client_pets(update)
     if result is None:
         return
     client, _ = result
@@ -218,7 +218,7 @@ async def price_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     (clients.altegio_company_id, обраної при реєстрації); бронювання все одно
     йде через зовнішній віджет, де клієнт може обрати будь-яку філію.
     """
-    result = await _registered_client_pets(update)
+    result = await registered_client_pets(update)
     if result is None:
         return
     client, pets = result
@@ -294,7 +294,7 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     cat_services = sorted(
-        (_slim_service(s) for s in services if s.get("category_id") == b["category_id"]),
+        (slim_service(s) for s in services if s.get("category_id") == b["category_id"]),
         key=lambda s: s["title"],
     )
     if not cat_services:
@@ -305,7 +305,7 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     pet = b["pet"]
     breed = (pet.get("breed") or "").strip()
-    matches = _match_services_by_breed(breed, cat_services, pet.get("weight")) if breed else []
+    matches = match_services_by_breed(breed, cat_services, pet.get("weight")) if breed else []
 
     if matches:
         rows = [_service_row(s) for s in matches]
@@ -326,17 +326,17 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             level_hits = []
             for sib in siblings:
                 sib_services = sorted(
-                    (_slim_service(s) for s in services if s.get("category_id") == sib["id"]),
+                    (slim_service(s) for s in services if s.get("category_id") == sib["id"]),
                     key=lambda s: s["title"],
                 )
-                if _match_services_by_breed(breed, sib_services, pet.get("weight")):
+                if match_services_by_breed(breed, sib_services, pet.get("weight")):
                     level_hits.append(sib)
 
             if level_hits:
                 await _show_level_suggestion(message, pet, breed, level_hits)
                 return
 
-            generic = _generic_breed_services(cat_services)
+            generic = generic_breed_services(cat_services)
             if generic:
                 await _show_generic_fallback(message, pet, breed, generic, len(cat_services))
                 return
@@ -405,8 +405,8 @@ async def _select_service(message, context: ContextTypes.DEFAULT_TYPE, service_i
 
     text = (
         f"🐾 {b['pet']['name']} · {service['title']}\n"
-        f"📍 {_location_name(b['company_id'])}\n"
-        f"💰 {_format_price(service)}"
+        f"📍 {location_name(b['company_id'])}\n"
+        f"💰 {format_price(service)}"
     )
     kb = _booking_link_keyboard([[InlineKeyboardButton("❌ Закрити", callback_data="bk_cancel")]])
     await with_retry(message.reply_text, text, reply_markup=kb)
@@ -485,9 +485,9 @@ async def _show_confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Підтвердіть запис:\n\n"
         f"🐾 {b['pet']['name']}\n"
         f"✂️ {b['service']['title']}\n"
-        f"📍 {_location_name(b['company_id'])}\n"
+        f"📍 {location_name(b['company_id'])}\n"
         f"📅 {d.strftime('%d.%m.%Y')} ({UA_WEEKDAYS[d.weekday()]}) о {b['time']}\n"
-        f"💰 {_format_price(b['service'])}"
+        f"💰 {format_price(b['service'])}"
     )
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("✅ Підтвердити", callback_data="bk_confirm")],
@@ -573,7 +573,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘.")
         return
 
-    location_name = _location_name(company_id)
+    loc_name = location_name(company_id)
     try:
         db.upsert_tracked_record({
             "altegio_record_id": record["id"],
@@ -581,7 +581,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "pet_id": pet["id"],
             "starts_at": record.get("datetime") or to_kyiv_iso(date_str, time_str),
             "service_title": service["title"],
-            "location_title": location_name,
+            "location_title": loc_name,
             "status": "active",
             "company_id": company_id,
             "altegio_service_id": service["id"],
@@ -595,7 +595,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     await with_retry(message.reply_text,
         "🎉 Записано!\n"
         f"🐾 {pet['name']} · {service['title']}\n"
-        f"📍 {location_name}\n"
+        f"📍 {loc_name}\n"
         f"📅 {d.strftime('%d.%m.%Y')} о {time_str}",
         reply_markup=MAIN_MENU,
     )
@@ -606,7 +606,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await with_retry(query.answer)
     data = query.data
 
     if data == "bk_cancel":

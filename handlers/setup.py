@@ -1,9 +1,9 @@
 """Єдина точка реєстрації всіх handler-ів (webhook_bot.py і bot.py)."""
 from telegram.ext import Application, CallbackQueryHandler, MessageHandler, filters
 
-from handlers import ai_chat, booking, my_bookings, pets, registration
+from handlers import ai_chat, booking, my_bookings, nearest_slots, pets, registration
 from handlers.error_handler import handle_error
-from handlers.menu import BTN_BOOK, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_PRICE
+from handlers.menu import BTN_BOOK, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_NEAREST, BTN_PRICE
 
 
 def register_handlers(application: Application) -> None:
@@ -21,6 +21,8 @@ def register_handlers(application: Application) -> None:
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_BOOK}$"), booking.book_start))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_PRICE}$"), booking.price_start))
     application.add_handler(CallbackQueryHandler(booking.handle_callback, pattern=r"^bk_"))
+    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_NEAREST}$"), nearest_slots.start))
+    application.add_handler(CallbackQueryHandler(nearest_slots.handle_callback, pattern=r"^ns_"))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_MY_BOOKINGS}$"), my_bookings.show_bookings))
     application.add_handler(CallbackQueryHandler(my_bookings.handle_callback, pattern=r"^mb_"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_chat.handle_message))
