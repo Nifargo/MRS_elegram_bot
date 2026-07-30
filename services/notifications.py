@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from config import ADMIN_GROUP_CHAT_ID, ADMIN_TOPIC_ID, TELEGRAM_TOKEN
 from db import client as db
@@ -21,14 +23,29 @@ BOOKING_INCOMPLETE_HOUR = 18  # о котрій годині (Київ) нага
 
 _API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
+# PythonAnywhere проксі інколи віддає транзиентний 502/503/504 на вихідні виклики
+# api.telegram.org (те саме джерело, що змусило handlers/common.with_retry() ретраїти
+# async-виклики) — cron-диспетчер шле напряму через requests, тож ретраї тут через
+# Session-level adapter, а не через ручний цикл.
+_session = requests.Session()
+_session.mount(
+    "https://",
+    HTTPAdapter(max_retries=Retry(
+        total=6,
+        backoff_factor=1.5,
+        status_forcelist=(502, 503, 504),
+        allowed_methods=frozenset(["POST"]),
+    )),
+)
+
 
 def send_telegram_message(chat_id: int, text: str, message_thread_id: int | None = None) -> bool:
-    """Надіслати повідомлення напряму через Bot API. Повертає True при успіху."""
+    """Надіслати повідомлення напряму через Bot API (з ретраями на транзиентні 502/503/504). Повертає True при успіху."""
     payload = {"chat_id": chat_id, "text": text}
     if message_thread_id is not None:
         payload["message_thread_id"] = message_thread_id
     try:
-        response = requests.post(f"{_API_URL}/sendMessage", json=payload, timeout=15)
+        response = _session.post(f"{_API_URL}/sendMessage", json=payload, timeout=15)
         if not response.ok:
             logger.error(f"Telegram sendMessage {chat_id}: HTTP {response.status_code} {response.text[:200]}")
             return False
