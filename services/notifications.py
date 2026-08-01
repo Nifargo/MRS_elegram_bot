@@ -110,13 +110,14 @@ def schedule_booking_incomplete(client_id: int) -> None:
 
 REMINDER_HOURS_BEFORE = 2.5
 THANKS_MINUTES_AFTER = 45
-_VISIT_NOTIF_TYPES = ["reminder_2h", "thanks_rating"]
+REBOOK_DEFAULT_WEEKS = 6  # Фаза 5 (рекомендація майстра "наступний візит через N тижнів") ще не реалізована — фіксований дефолт
+_VISIT_NOTIF_TYPES = ["reminder_2h", "thanks_rating", "rebook_nudge"]
 
 
 def schedule_visit_notifications(
     client_id: int | None, altegio_record_id: int, starts_at: datetime, ends_at: datetime | None,
 ) -> None:
-    """(Пере)планувати reminder_2h/thanks_rating для запису.
+    """(Пере)планувати reminder_2h/thanks_rating/rebook_nudge для запису.
 
     Ідемпотентно — завжди спершу чистить старі pending-нагадування цього
     запису, тож підходить і для першого планування, і для переносу (нові
@@ -138,8 +139,12 @@ def schedule_visit_notifications(
         db.create_notification(
             client_id, "thanks_rating", thanks_at.isoformat(), altegio_record_id=altegio_record_id,
         )
+        rebook_at = ends_at + timedelta(weeks=REBOOK_DEFAULT_WEEKS)
+        db.create_notification(
+            client_id, "rebook_nudge", rebook_at.isoformat(), altegio_record_id=altegio_record_id,
+        )
 
 
 def cancel_visit_notifications(altegio_record_id: int) -> None:
-    """Скасувати заплановані reminder_2h/thanks_rating для запису (при скасуванні візиту)."""
+    """Скасувати заплановані reminder_2h/thanks_rating/rebook_nudge для запису (при скасуванні візиту)."""
     db.delete_pending_notifications_for_record(altegio_record_id, _VISIT_NOTIF_TYPES)
