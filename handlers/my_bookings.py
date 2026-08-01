@@ -29,10 +29,10 @@ from telegram.ext import ContextTypes
 
 from db import client as db
 from handlers import booking
-from handlers.common import format_date_label, parse_iso_datetime, to_kyiv_iso, with_retry
+from handlers.common import format_date_label, kyiv_datetime, parse_iso_datetime, with_retry
 from services.notifications import KYIV_TZ
 from handlers.menu import MAIN_MENU
-from services import altegio
+from services import altegio, notifications
 from services.altegio import AltegioError
 
 logger = logging.getLogger(__name__)
@@ -229,12 +229,16 @@ async def _confirm_reschedule(message, context: ContextTypes.DEFAULT_TYPE) -> No
         await with_retry(message.reply_text, "Не вдалося перенести запис 😔 Спробуйте ще раз або зверніться 🆘.")
         return
 
+    starts_dt = kyiv_datetime(date_str, time_str)
+    ends_dt = starts_dt + timedelta(seconds=seance_length)
     db.upsert_tracked_record({
         "altegio_record_id": r["altegio_record_id"],
-        "starts_at": to_kyiv_iso(date_str, time_str),
+        "starts_at": starts_dt.isoformat(),
+        "ends_at": ends_dt.isoformat(),
         "status": "active",
         "staff_id": staff_id,
     })
+    notifications.schedule_visit_notifications(r["client_id"], r["altegio_record_id"], starts_dt, ends_dt)
 
     d = datetime.fromisoformat(date_str)
     await with_retry(message.reply_text,
@@ -267,6 +271,7 @@ async def _do_cancel(message, record: dict, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     db.update_tracked_record_status(record["altegio_record_id"], "cancelled")
+    notifications.cancel_visit_notifications(record["altegio_record_id"])
     await with_retry(message.reply_text, "❌ Запис скасовано.", reply_markup=MAIN_MENU)
 
 

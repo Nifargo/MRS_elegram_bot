@@ -161,15 +161,26 @@ def get_last_past_tracked_record(client_id: int) -> dict | None:
 
 # --- Сповіщення ---
 
-def create_notification(client_id: int, type: str, send_after: str, payload: dict | None = None) -> dict:
+def create_notification(
+    client_id: int, type: str, send_after: str, payload: dict | None = None,
+    altegio_record_id: int | None = None,
+) -> dict:
     """Запланувати сповіщення (send_after — ISO timestamp)."""
     result = supabase.table("notifications").insert({
         "client_id": client_id,
         "type": type,
         "send_after": send_after,
         "payload_json": payload,
+        "altegio_record_id": altegio_record_id,
     }).execute()
     return result.data[0]
+
+
+def delete_pending_notifications_for_record(altegio_record_id: int, types: list[str]) -> None:
+    """Видалити pending-сповіщення заданих типів для конкретного запису (Фаза 4: reminder_2h/thanks_rating)."""
+    supabase.table("notifications").delete().eq("altegio_record_id", altegio_record_id).eq(
+        "status", "pending"
+    ).in_("type", types).execute()
 
 
 def has_pending_notification(client_id: int, type: str) -> bool:
@@ -192,6 +203,24 @@ def mark_notification(notification_id: int, status: str) -> None:
     if status == "sent":
         fields["sent_at"] = datetime.now(timezone.utc).isoformat()
     supabase.table("notifications").update(fields).eq("id", notification_id).execute()
+
+
+# --- Оцінки (Фаза 4, частина 2) ---
+
+def create_rating(altegio_record_id: int, service_stars: int, groomer_stars: int) -> dict:
+    """Записати оцінку послуги/грумера для завершеного візиту."""
+    result = supabase.table("ratings").insert({
+        "altegio_record_id": altegio_record_id,
+        "service_stars": service_stars,
+        "groomer_stars": groomer_stars,
+    }).execute()
+    return result.data[0]
+
+
+def get_rating(altegio_record_id: int) -> dict | None:
+    """Оцінка запису, якщо вже поставлена (захист від подвійного тапу)."""
+    result = supabase.table("ratings").select("*").eq("altegio_record_id", altegio_record_id).limit(1).execute()
+    return result.data[0] if result.data else None
 
 
 # --- Щоденні (не 10-хвилинні) cron-задачі ---

@@ -39,11 +39,15 @@ _session.mount(
 )
 
 
-def send_telegram_message(chat_id: int, text: str, message_thread_id: int | None = None) -> bool:
+def send_telegram_message(
+    chat_id: int, text: str, message_thread_id: int | None = None, reply_markup: dict | None = None,
+) -> bool:
     """Надіслати повідомлення напряму через Bot API (з ретраями на транзиентні 502/503/504). Повертає True при успіху."""
     payload = {"chat_id": chat_id, "text": text}
     if message_thread_id is not None:
         payload["message_thread_id"] = message_thread_id
+    if reply_markup is not None:
+        payload["reply_markup"] = reply_markup
     try:
         response = _session.post(f"{_API_URL}/sendMessage", json=payload, timeout=15)
         if not response.ok:
@@ -100,3 +104,42 @@ def schedule_booking_incomplete(client_id: int) -> None:
     if send_after <= now:
         send_after += timedelta(days=1)
     db.create_notification(client_id, "booking_incomplete", send_after.isoformat())
+
+
+# --- Фаза 4: нагадування перед візитом і подяка після ---
+
+REMINDER_HOURS_BEFORE = 2.5
+THANKS_MINUTES_AFTER = 45
+_VISIT_NOTIF_TYPES = ["reminder_2h", "thanks_rating"]
+
+
+def schedule_visit_notifications(
+    client_id: int | None, altegio_record_id: int, starts_at: datetime, ends_at: datetime | None,
+) -> None:
+    """(Пере)планувати reminder_2h/thanks_rating для запису.
+
+    Ідемпотентно — завжди спершу чистить старі pending-нагадування цього
+    запису, тож підходить і для першого планування, і для переносу (нові
+    starts_at/ends_at), і викликається без шкоди навіть при "тихих" вебхук-
+    оновленнях, де час насправді не змінився.
+    """
+    db.delete_pending_notifications_for_record(altegio_record_id, _VISIT_NOTIF_TYPES)
+    if client_id is None:
+        return
+
+    reminder_at = starts_at - timedelta(hours=REMINDER_HOURS_BEFORE)
+    if reminder_at > datetime.now(KYIV_TZ):
+        db.create_notification(
+            client_id, "reminder_2h", reminder_at.isoformat(), altegio_record_id=altegio_record_id,
+        )
+
+    if ends_at is not None:
+        thanks_at = ends_at + timedelta(minutes=THANKS_MINUTES_AFTER)
+        db.create_notification(
+            client_id, "thanks_rating", thanks_at.isoformat(), altegio_record_id=altegio_record_id,
+        )
+
+
+def cancel_visit_notifications(altegio_record_id: int) -> None:
+    """Скасувати заплановані reminder_2h/thanks_rating для запису (при скасуванні візиту)."""
+    db.delete_pending_notifications_for_record(altegio_record_id, _VISIT_NOTIF_TYPES)

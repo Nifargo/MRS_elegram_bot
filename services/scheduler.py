@@ -7,6 +7,7 @@
 import logging
 from datetime import datetime, timezone
 
+from handlers.common import parse_iso_datetime
 from db import client as db
 from db.client import supabase
 from services import notifications, vaccine_sync
@@ -78,12 +79,53 @@ def _handle_booking_incomplete(notification: dict, application=None) -> str:
     return "sent" if notifications.notify_admins(text) else "failed"
 
 
+def _handle_reminder_2h(notification: dict, application=None) -> str:
+    """Нагадати клієнту про візит за ~2.5 год до початку."""
+    record = db.get_tracked_record(notification["altegio_record_id"])
+    if record is None or record["status"] != "active":
+        return "sent"  # запис скасовано/зник — тихо гасимо
+
+    client = db.get_client_by_id(record["client_id"])
+    if client is None:
+        return "sent"
+
+    pet = db.get_pet(record["pet_id"]) if record.get("pet_id") else None
+    who = f"{pet['name']} 🐾" if pet else "вас"
+    starts = parse_iso_datetime(record["starts_at"]).astimezone(KYIV_TZ)
+    text = (
+        f"⏰ Нагадуємо: сьогодні о {starts.strftime('%H:%M')} чекаємо {who}\n"
+        f"✂️ {record.get('service_title') or '—'}\n"
+        f"📍 {record.get('location_title') or '—'}"
+    )
+    return "sent" if notifications.send_telegram_message(client["tg_user_id"], text) else "failed"
+
+
+def _handle_thanks_rating(notification: dict, application=None) -> str:
+    """Подякувати клієнту через 45 хв після завершення візиту і запитати оцінку послуги."""
+    record = db.get_tracked_record(notification["altegio_record_id"])
+    if record is None or record["status"] != "active":
+        return "sent"
+
+    client = db.get_client_by_id(record["client_id"])
+    if client is None:
+        return "sent"
+
+    record_id = record["altegio_record_id"]
+    text = "💛 Дякуємо, що завітали до Mr.Snoopy Grooming!\n\nЯк оцініте якість послуги?"
+    keyboard = {"inline_keyboard": [[
+        {"text": "⭐" * n, "callback_data": f"rt_svc:{record_id}:{n}"} for n in range(1, 6)
+    ]]}
+    return "sent" if notifications.send_telegram_message(client["tg_user_id"], text, reply_markup=keyboard) else "failed"
+
+
 # Обробники по типу сповіщення. Решта типів додається у Фазі 4+.
 # "vaccine" (Фаза 10) тут немає — sync_vaccine_dates() шле нагадування напряму,
 # без проміжного рядка в notifications (див. _run_daily_tasks нижче).
 _HANDLERS = {
     "form_incomplete": _handle_form_incomplete,
     "booking_incomplete": _handle_booking_incomplete,
+    "reminder_2h": _handle_reminder_2h,
+    "thanks_rating": _handle_thanks_rating,
 }
 
 
