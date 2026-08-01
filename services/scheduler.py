@@ -7,6 +7,7 @@
 import logging
 from datetime import datetime, timezone
 
+from config import ALTEGIO_BOOKING_WIDGET_URL
 from handlers.common import parse_iso_datetime
 from db import client as db
 from db.client import supabase
@@ -118,6 +119,28 @@ def _handle_thanks_rating(notification: dict, application=None) -> str:
     return "sent" if notifications.send_telegram_message(client["tg_user_id"], text, reply_markup=keyboard) else "failed"
 
 
+def _handle_rebook_nudge(notification: dict, application=None) -> str:
+    """Нагадати клієнту записатись знову через REBOOK_DEFAULT_WEEKS після візиту."""
+    record = db.get_tracked_record(notification["altegio_record_id"])
+    if record is None or record["status"] != "active":
+        return "sent"  # запис скасовано/зник — тихо гасимо
+
+    client = db.get_client_by_id(record["client_id"])
+    if client is None:
+        return "sent"
+
+    if db.has_tracked_record_since(client["id"], notification["created_at"]):
+        return "sent"  # клієнт уже записався знову — нагадування не потрібне
+
+    pet = db.get_pet(record["pet_id"]) if record.get("pet_id") else None
+    who = f"{pet['name']} 🐾" if pet else "Ваш улюбленець"
+    text = f"🐩 {who} час на грумінг! Записатись?"
+    keyboard = {"inline_keyboard": [[
+        {"text": "📅 Записатись", "url": ALTEGIO_BOOKING_WIDGET_URL}
+    ]]}
+    return "sent" if notifications.send_telegram_message(client["tg_user_id"], text, reply_markup=keyboard) else "failed"
+
+
 # Обробники по типу сповіщення. Решта типів додається у Фазі 4+.
 # "vaccine" (Фаза 10) тут немає — sync_vaccine_dates() шле нагадування напряму,
 # без проміжного рядка в notifications (див. _run_daily_tasks нижче).
@@ -126,6 +149,7 @@ _HANDLERS = {
     "booking_incomplete": _handle_booking_incomplete,
     "reminder_2h": _handle_reminder_2h,
     "thanks_rating": _handle_thanks_rating,
+    "rebook_nudge": _handle_rebook_nudge,
 }
 
 
