@@ -9,7 +9,13 @@ Callback data:
 import logging
 from datetime import date
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+)
 from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
@@ -20,13 +26,15 @@ from telegram.ext import (
 )
 
 from db import client as db
-from handlers.common import parse_date, parse_weight, with_retry
+from handlers.common import hide_menu_button, parse_date, parse_weight, show_menu_button, with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio_sync
 
 logger = logging.getLogger(__name__)
 
 EDIT_VALUE = 0
+BTN_SKIP_PHOTO = "⏭️ Пропустити"
+SKIP_PHOTO_KB = ReplyKeyboardMarkup([[BTN_SKIP_PHOTO]], resize_keyboard=True)
 
 # поле -> (підпис, тип значення: text / date / weight / photo)
 # Вакцинацію тут не ведемо: дата вакцинації живе в картці клієнта Altegio,
@@ -82,6 +90,7 @@ def _list_keyboard(pets: list[dict]) -> InlineKeyboardMarkup:
     rows = [[InlineKeyboardButton(f"🐾 {pet['name']}", callback_data=f"pet_show:{pet['id']}")]
             for pet in pets]
     rows.append([InlineKeyboardButton("➕ Додати улюбленця", callback_data="pet_add")])
+    rows.append([InlineKeyboardButton("◀️ Головне меню", callback_data="pet_menu")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -128,6 +137,8 @@ async def show_pets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
+    await hide_menu_button(context.bot, update.effective_chat.id)
+
     pets = db.get_pets_by_client(client["id"])
     if not pets:
         await update.message.reply_text(
@@ -144,6 +155,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = update.callback_query
     await with_retry(query.answer)
     data = query.data
+
+    if data == "pet_menu":
+        await show_menu_button(context.bot, update.effective_chat.id)
+        await query.message.reply_text("Головне меню:", reply_markup=MAIN_MENU)
+        return
 
     if data == "pet_list":
         client = db.get_client_by_tg_id(update.effective_user.id)
@@ -198,6 +214,7 @@ async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await query.message.reply_text("Не знайшов цю картку 😔")
         return ConversationHandler.END
 
+    await hide_menu_button(context.bot, update.effective_chat.id)
     context.user_data["edit_pet_id"] = pet["id"]
     context.user_data["edit_field"] = field
 
@@ -208,7 +225,10 @@ async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "weight": "Введіть нову вагу в кг (напр. 4.5):",
         "photo": "Надішліть нове фото улюбленця 📸",
     }
-    await query.message.reply_text(prompts[value_type] + "\n(або /cancel щоб скасувати)")
+    await query.message.reply_text(
+        prompts[value_type] + "\n(або /cancel щоб скасувати)",
+        reply_markup=SKIP_PHOTO_KB if value_type == "photo" else ReplyKeyboardRemove(),
+    )
     return EDIT_VALUE
 
 
@@ -228,8 +248,17 @@ async def edit_field_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     label, value_type = EDITABLE_FIELDS[field]
 
     if value_type == "photo":
+        if update.message.text == BTN_SKIP_PHOTO:
+            context.user_data.pop("edit_pet_id", None)
+            context.user_data.pop("edit_field", None)
+            await show_menu_button(context.bot, update.effective_chat.id)
+            await update.message.reply_text("Гаразд, фото не змінюємо.", reply_markup=MAIN_MENU)
+            return ConversationHandler.END
         if not update.message.photo:
-            await update.message.reply_text("Потрібне фото 📸 Надішліть зображення або /cancel.")
+            await update.message.reply_text(
+                "Потрібне фото 📸 Надішліть зображення, натисніть «Пропустити» або /cancel.",
+                reply_markup=SKIP_PHOTO_KB,
+            )
             return EDIT_VALUE
         value = update.message.photo[-1].file_id
     elif value_type == "date":
@@ -271,6 +300,7 @@ async def edit_field_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def edit_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("edit_pet_id", None)
     context.user_data.pop("edit_field", None)
+    await show_menu_button(context.bot, update.effective_chat.id)
     await update.message.reply_text("Скасовано.", reply_markup=MAIN_MENU)
     return ConversationHandler.END
 

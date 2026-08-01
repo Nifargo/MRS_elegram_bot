@@ -2,6 +2,8 @@
 import logging
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from config import ALTEGIO_PARTNER_TOKEN, ALTEGIO_USER_TOKEN
 
@@ -14,6 +16,23 @@ class AltegioError(Exception):
     """Помилка звернення до Altegio API."""
 
 
+# PythonAnywhere проксі інколи віддає транзиентний 502/503/504 і на вихідні виклики
+# api.alteg.io (той самий проксі, що змусив services/notifications.py ретраїти
+# запити до api.telegram.org) — ретраї через Session-level adapter на всіх методах:
+# 502/503/504 означає, що проксі не достукався до origin-сервера Altegio, тож
+# запит із високою ймовірністю не дійшов і повтор POST/PUT/DELETE безпечний.
+_session = requests.Session()
+_session.mount(
+    "https://",
+    HTTPAdapter(max_retries=Retry(
+        total=6,
+        backoff_factor=1.5,
+        status_forcelist=(502, 503, 504),
+        allowed_methods=frozenset(["GET", "POST", "PUT", "DELETE"]),
+    )),
+)
+
+
 def _request(method: str, path: str, params: dict = None, json: dict = None) -> dict:
     url = f"{BASE_URL}/{path}"
     headers = {
@@ -22,7 +41,7 @@ def _request(method: str, path: str, params: dict = None, json: dict = None) -> 
         "Content-Type": "application/json",
     }
 
-    response = requests.request(method, url, headers=headers, params=params, json=json, timeout=15)
+    response = _session.request(method, url, headers=headers, params=params, json=json, timeout=15)
 
     if not response.ok:
         logger.error(f"Altegio API помилка {response.status_code}: {response.text[:300]}")

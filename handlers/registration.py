@@ -20,7 +20,7 @@ from telegram.ext import (
 from config import ALTEGIO_LOCATIONS, WELCOME_MESSAGE
 from db import client as db
 from groq_client import clear_chat_history
-from handlers.common import normalize_phone, parse_date, parse_weight, with_retry
+from handlers.common import hide_menu_button, normalize_phone, parse_date, parse_weight, show_menu_button, with_retry
 from handlers.menu import MAIN_MENU
 from services import altegio, altegio_sync
 from services.altegio import AltegioError
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 BTN_SHARE_PHONE = "📱 Поділитись номером"
 BTN_ADD_MORE = "➕ Додати ще одного"
 BTN_FINISH = "✅ Завершити"
+BTN_SKIP_PHOTO = "⏭️ Пропустити"
 
 PHONE_KB = ReplyKeyboardMarkup(
     [[KeyboardButton(BTN_SHARE_PHONE, request_contact=True)]],
@@ -47,6 +48,7 @@ LOCATION_KB = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 ADD_MORE_KB = ReplyKeyboardMarkup([[BTN_ADD_MORE], [BTN_FINISH]], resize_keyboard=True)
+PET_PHOTO_KB = ReplyKeyboardMarkup([[BTN_SKIP_PHOTO]], resize_keyboard=True)
 
 
 def _save_draft(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -143,9 +145,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.info(f"🆕 Новий клієнт tg_user_id={user.id}, id={client['id']}")
 
     if client["registration_done"]:
+        await show_menu_button(context.bot, update.effective_chat.id)
         await with_retry(update.message.reply_text, WELCOME_MESSAGE, reply_markup=MAIN_MENU)
         return ConversationHandler.END
 
+    await hide_menu_button(context.bot, update.effective_chat.id)
     context.user_data["client_id"] = client["id"]
     context.user_data["pet"] = {}
 
@@ -195,6 +199,7 @@ async def add_pet_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await with_retry(query.message.reply_text, "Спочатку заповнимо коротку анкету — надішліть /start 🐾")
         return ConversationHandler.END
 
+    await hide_menu_button(context.bot, update.effective_chat.id)
     context.user_data["client_id"] = client["id"]
     context.user_data["pet"] = {}
     context.user_data["adding_extra_pet"] = True
@@ -349,7 +354,10 @@ async def got_pet_behavior(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def _ask_pet_photo(update: Update) -> int:
-    await with_retry(update.message.reply_text, "І останнє — фото улюбленця для картки 📸")
+    await with_retry(update.message.reply_text,
+        "І останнє — фото улюбленця для картки 📸\nЯкщо немає під рукою — можна пропустити.",
+        reply_markup=PET_PHOTO_KB,
+    )
     return PET_PHOTO
 
 
@@ -358,8 +366,15 @@ async def got_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return await _finish_pet(update, context)
 
 
+async def skip_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    return await _finish_pet(update, context)
+
+
 async def invalid_pet_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await with_retry(update.message.reply_text, "Будь ласка, надішліть фото улюбленця 📸")
+    await with_retry(update.message.reply_text,
+        "Будь ласка, надішліть фото улюбленця 📸 (або натисніть «Пропустити»)",
+        reply_markup=PET_PHOTO_KB,
+    )
     return PET_PHOTO
 
 
@@ -395,6 +410,7 @@ async def got_add_more(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             "registration_done": True,
             "draft_json": None,
         })
+        await show_menu_button(context.bot, update.effective_chat.id)
         if context.user_data.pop("adding_extra_pet", False):
             await with_retry(update.message.reply_text, "Улюбленця додано! 🐾", reply_markup=MAIN_MENU)
         else:
@@ -411,6 +427,7 @@ async def got_add_more(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await show_menu_button(context.bot, update.effective_chat.id)
     await with_retry(update.message.reply_text,
         "Добре, зупинив анкету. Продовжити можна будь-коли — просто надішліть /start.",
         reply_markup=MAIN_MENU,
@@ -437,6 +454,7 @@ conversation = ConversationHandler(
         PET_BEHAVIOR: [MessageHandler(_TEXT, got_pet_behavior)],
         PET_PHOTO: [
             MessageHandler(filters.PHOTO, got_pet_photo),
+            MessageHandler(filters.Regex(f"^{BTN_SKIP_PHOTO}$"), skip_pet_photo),
             MessageHandler(_TEXT, invalid_pet_photo),
         ],
         ADD_MORE: [MessageHandler(_TEXT, got_add_more)],
