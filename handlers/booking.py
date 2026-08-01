@@ -50,7 +50,14 @@ from telegram.ext import ContextTypes
 
 from config import ALTEGIO_BOOKING_WIDGET_URL, ALTEGIO_LOCATIONS, HELP_PHONE
 from db import client as db
-from handlers.common import UA_WEEKDAYS, format_date_label, kyiv_datetime, with_retry
+from handlers.common import (
+    UA_WEEKDAYS,
+    format_date_label,
+    hide_menu_button,
+    kyiv_datetime,
+    show_menu_button,
+    with_retry,
+)
 from handlers.menu import MAIN_MENU
 from services import altegio, notifications
 from services.altegio import AltegioError
@@ -168,7 +175,10 @@ def _service_row(service: dict) -> list[InlineKeyboardButton]:
     return [InlineKeyboardButton(f"{service['title']} — {format_price(service)}", callback_data=f"bk_svc:{service['id']}")]
 
 
-def _booking_link_keyboard(extra_rows: list[list[InlineKeyboardButton]] | None = None) -> InlineKeyboardMarkup:
+def booking_link_keyboard(extra_rows: list[list[InlineKeyboardButton]] | None = None) -> InlineKeyboardMarkup:
+    """Кнопка на зовнішній Altegio-віджет — публічна, бо це і запасний вихід
+    для інших флоу (nearest_slots.py/my_bookings.py), коли Altegio API впав
+    навіть після ретраїв (services/altegio.py) і бот сам завершити дію не може."""
     rows = [[InlineKeyboardButton("📅 Записатись", url=ALTEGIO_BOOKING_WIDGET_URL)]]
     rows.extend(extra_rows or [])
     return InlineKeyboardMarkup(rows)
@@ -199,6 +209,7 @@ async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if result is None:
         return
     client, _ = result
+    await hide_menu_button(context.bot, update.effective_chat.id)
 
     try:
         notifications.schedule_booking_incomplete(client["id"])
@@ -207,7 +218,7 @@ async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     await with_retry(update.message.reply_text,
         "📅 Записатись можна за посиланням нижче — оберіть філію, послугу, дату й час:",
-        reply_markup=_booking_link_keyboard(),
+        reply_markup=booking_link_keyboard(),
     )
 
 
@@ -222,6 +233,7 @@ async def price_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if result is None:
         return
     client, pets = result
+    await hide_menu_button(context.bot, update.effective_chat.id)
 
     await with_retry(update.message.reply_text, "💰 Перевіряємо вартість...", reply_markup=ReplyKeyboardRemove())
 
@@ -273,7 +285,11 @@ async def _ask_category(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         categories = altegio.get_service_categories(b["company_id"])
     except AltegioError as e:
         logger.error(f"Altegio категорії {b['company_id']}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking_link_keyboard(),
+        )
         return
 
     if not categories:
@@ -290,7 +306,11 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         services = altegio.get_services(b["company_id"])
     except AltegioError as e:
         logger.error(f"Altegio послуги {b['company_id']}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking_link_keyboard(),
+        )
         return
 
     cat_services = sorted(
@@ -408,7 +428,7 @@ async def _select_service(message, context: ContextTypes.DEFAULT_TYPE, service_i
         f"📍 {location_name(b['company_id'])}\n"
         f"💰 {format_price(service)}"
     )
-    kb = _booking_link_keyboard([[InlineKeyboardButton("❌ Закрити", callback_data="bk_cancel")]])
+    kb = booking_link_keyboard([[InlineKeyboardButton("❌ Закрити", callback_data="bk_cancel")]])
     await with_retry(message.reply_text, text, reply_markup=kb)
 
 
@@ -418,7 +438,11 @@ async def _ask_date(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         dates = altegio.get_available_dates(b["company_id"], staff_id=b.get("staff_id") or 0, service_ids=[b["service"]["id"]])
     except AltegioError as e:
         logger.error(f"Altegio дати {b['company_id']}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking_link_keyboard(),
+        )
         return
 
     if not dates:
@@ -460,7 +484,11 @@ async def _ask_time(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         times = altegio.get_available_times(b["company_id"], b.get("staff_id") or 0, b["date"], service_ids=[b["service"]["id"]])
     except AltegioError as e:
         logger.error(f"Altegio час {b['company_id']} {b['date']}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити вільний час 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося завантажити вільний час 😔 Спробуйте пізніше або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking_link_keyboard(),
+        )
         return
 
     b["times"] = times
@@ -537,7 +565,11 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             slot = altegio.find_available_staff_for_slot(company_id, service["id"], date_str, time_str)
         except AltegioError as e:
             logger.error(f"Altegio пошук майстра {company_id}: {e}")
-            await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
+            await with_retry(message.reply_text,
+                "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘. "
+                "Або запишіться самостійно за посиланням:",
+                reply_markup=booking_link_keyboard(),
+            )
             return
 
     if slot is None:
@@ -549,7 +581,11 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     client = db.get_client_by_id(b["client_id"])
     altegio_client_id = resolve_altegio_client_id(client, company_id)
     if altegio_client_id is None:
-        await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора.")
+        await with_retry(message.reply_text,
+            "Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking_link_keyboard(),
+        )
         return
 
     comment_parts = [pet["name"]]
@@ -570,7 +606,11 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
     except AltegioError as e:
         logger.error(f"Не вдалося створити запис: {e}")
-        await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking_link_keyboard(),
+        )
         return
 
     loc_name = location_name(company_id)
@@ -604,6 +644,7 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=MAIN_MENU,
     )
     context.user_data.pop("booking", None)
+    await show_menu_button(context.bot, message.chat_id)
 
 
 # --- Диспетчер ---
@@ -615,11 +656,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if data == "bk_cancel":
         context.user_data.pop("booking", None)
+        await show_menu_button(context.bot, update.effective_chat.id)
         await with_retry(query.message.reply_text, "Скасовано.", reply_markup=MAIN_MENU)
         return
 
     b = context.user_data.get("booking")
     if b is None:
+        await show_menu_button(context.bot, update.effective_chat.id)
         await with_retry(query.message.reply_text,
             "Сесію втрачено — почніть спочатку кнопкою «💰 Дізнатись вартість».",
             reply_markup=MAIN_MENU,

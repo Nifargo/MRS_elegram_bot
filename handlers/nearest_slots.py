@@ -1,29 +1,43 @@
 """«🔥 Найближчі віконця» — запис до конкретного грумера, без переходу на Altegio-віджет.
 
-На відміну від handlers/booking.py (зовнішній віджет, клієнт сам обирає
-філію/послугу/дату/час), тут клієнт спершу обирає грумера — і бачить лише ті
-послуги, які цей грумер реально надає для породи його улюбленця (рівень
-грумера визначається з тексту service_categories/get_staff, як і в booking.py,
-тільки тут ще й фільтрується сама клавіатура майстрів). Якщо клієнт обирає
-«🎲 Будь-який майстер», рівень не обмежуємо — фолбек-логіка (сусідній рівень,
-генеральний «інші породи») працює так само, як у booking.py, і використовує ті
-самі публічні хелпери (match_services_by_breed, generic_breed_services).
+Клієнту важливіше саме коли є вільне віконце, ніж вартість, тому порядок
+кроків навмисно інший, ніж у booking.py: локація → майстер → час → (і лише
+тоді) ціна.
 
-Тривалість послуги (seance_length) відома лише зі слоту book_times, тому
-найближчі вільні віконця збираються послідовним обходом get_available_dates →
-get_available_times по датах, поки не назбирається NEAREST_SLOTS_TARGET слотів
-або не скінчиться горизонт NEAREST_SLOTS_HORIZON_DAYS. Стан флоу — у
+Клавіатура майстрів фільтрується одразу після вибору локації: показуємо лише
+тих, чий рівень (з тексту імені/категорії, як і в booking.py) реально має
+послугу для породи улюбленця (`_breed_eligible_levels`). Порядок кроків після
+цього: спочатку шукаємо й показуємо найближчі вільні віконця цього майстра
+(ще без прив'язки до конкретної послуги — Altegio дає час без durations, якщо
+не передати service_ids), і лише після того, як клієнт обрав час, показуємо
+послуги для породи улюбленця з ціною — клієнт обирає сам, бот послугу не
+вгадує. Якщо клієнт обирає «🎲 Будь-який майстер», рівень не обмежуємо — тут
+збіг може бути неоднозначним (кілька рівнів одразу), тож завжди даємо клієнту
+обрати послугу вручну зі списку.
+
+Якщо порода нестандартна і жоден рівень з нею не працює — фільтрацію майстрів
+не застосовуємо (показуємо всіх), а на кроці послуги одразу пропонуємо
+підказки за вагою (generic_breed_services) + кнопку повного списку послуг, щоб
+клієнт міг знайти свою породу (чи послугу для кота) вручну.
+
+Найближчі вільні віконця збираються послідовним обходом get_available_dates →
+get_available_times по датах (без service_ids — точна тривалість ще невідома),
+поки не назбирається NEAREST_SLOTS_TARGET слотів або не скінчиться горизонт
+NEAREST_SLOTS_HORIZON_DAYS. На кроці підтвердження (`_confirm`) слот
+перевіряється живим запитом уже з конкретною послугою (service_ids) — це і
+дає точну тривалість (seance_length) для create_record і захищає від того,
+що слот зайняли, поки клієнт обирав послугу. Стан флоу — у
 context.user_data["nearest"] (не персистентний, як і в booking.py/pets.py).
 
 Callback data:
   ns_pet:<id>       — обрати улюбленця
   ns_loc:<company>  — обрати локацію
   ns_staff:<id>     — обрати майстра (0 = 🎲 будь-який майстер)
-  ns_retry_staff    — повернутись до вибору майстра (немає збігу по породі на цьому рівні)
   ns_svc:<id>       — обрати послугу
   ns_all:<page>     — показати повний список послуг (з підказок по породі)
   ns_pg_svc:<page>  — пагінація повного списку послуг
   ns_slot:<index>   — обрати віконце зі списку найближчих
+  ns_retry_staff    — повернутись до вибору іншого майстра (з екрана віконець)
   ns_confirm        — підтвердити запис
   ns_contact_admin  — зв'язатись з адміністратором (номер салону)
   ns_cancel         — скасувати флоу на будь-якому кроці
@@ -38,7 +52,14 @@ from telegram.ext import ContextTypes
 from config import ALTEGIO_LOCATIONS, HELP_PHONE
 from db import client as db
 from handlers import booking
-from handlers.common import UA_WEEKDAYS, format_date_label, to_kyiv_iso, with_retry
+from handlers.common import (
+    UA_WEEKDAYS,
+    format_date_label,
+    hide_menu_button,
+    show_menu_button,
+    to_kyiv_iso,
+    with_retry,
+)
 from handlers.menu import MAIN_MENU
 from services import altegio, notifications
 from services.altegio import AltegioError
@@ -66,6 +87,19 @@ def _category_level(category: dict) -> str:
     """'Комплексний догляд (Топ грумер)' -> 'топ' — рівень з тексту в дужках."""
     m = re.search(r"\(([^)]*)\)\s*$", category["title"])
     return _level_of_text(m.group(1)) if m else "база"
+
+
+def _breed_eligible_levels(categories: list[dict], services: list[dict], breed: str, weight: float | None) -> set[str]:
+    """Рівні грумера, у яких серед послуг є збіг по породі улюбленця."""
+    if not breed:
+        return set()
+    levels = set()
+    for lvl in ("база", "pro", "топ"):
+        lvl_cat_ids = {c["id"] for c in categories if _category_level(c) == lvl}
+        lvl_services = [booking.slim_service(s) for s in services if s.get("category_id") in lvl_cat_ids]
+        if booking.match_services_by_breed(breed, lvl_services, weight):
+            levels.add(lvl)
+    return levels
 
 
 # --- Клавіатури ---
@@ -105,6 +139,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if result is None:
         return
     client, pets = result
+    await hide_menu_button(context.bot, update.effective_chat.id)
 
     try:
         notifications.schedule_booking_incomplete(client["id"])
@@ -132,28 +167,57 @@ async def _ask_staff(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     n = context.user_data["nearest"]
     try:
         staff = altegio.get_staff(n["company_id"])
+        categories = altegio.get_service_categories(n["company_id"])
+        services = altegio.get_services(n["company_id"])
     except AltegioError as e:
-        logger.error(f"Altegio майстри {n['company_id']}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити майстрів 😔 Спробуйте пізніше або зверніться 🆘.")
+        logger.error(f"Altegio майстри/послуги {n['company_id']}: {e}")
+        await with_retry(message.reply_text,
+            "Не вдалося завантажити майстрів 😔 Спробуйте пізніше або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking.booking_link_keyboard(),
+        )
         return
 
     if not staff:
         await with_retry(message.reply_text, "У цій локації поки немає майстрів для запису 😔")
         return
 
-    n["staff_list"] = staff
-    await with_retry(message.reply_text, "Якого майстра оберете? 💇", reply_markup=_staff_keyboard(staff))
+    n["categories"] = categories
+    n["all_services"] = services
+
+    pet = n["pet"]
+    breed = (pet.get("breed") or "").strip()
+    eligible_levels = _breed_eligible_levels(categories, services, breed, pet.get("weight"))
+
+    if eligible_levels:
+        filtered_staff = [s for s in staff if _level_of_text(s["name"]) in eligible_levels]
+        n["breed_generic"] = False
+    else:
+        # Нестандартна порода (чи ніде нема збігу) — жоден рівень не "правильніший",
+        # показуємо всіх майстрів; послугу підбиратимемо за вагою на наступному кроці.
+        filtered_staff = staff
+        n["breed_generic"] = bool(breed)
+
+    n["staff_list"] = filtered_staff
+    await with_retry(message.reply_text, "Якого майстра оберете? 💇", reply_markup=_staff_keyboard(filtered_staff))
 
 
 async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     n = context.user_data["nearest"]
-    try:
-        categories = altegio.get_service_categories(n["company_id"])
-        services = altegio.get_services(n["company_id"])
-    except AltegioError as e:
-        logger.error(f"Altegio послуги {n['company_id']}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘.")
-        return
+    categories = n.get("categories")
+    services = n.get("all_services")
+    if categories is None or services is None:
+        try:
+            categories = altegio.get_service_categories(n["company_id"])
+            services = altegio.get_services(n["company_id"])
+        except AltegioError as e:
+            logger.error(f"Altegio послуги {n['company_id']}: {e}")
+            await with_retry(message.reply_text,
+                "Не вдалося завантажити послуги 😔 Спробуйте пізніше або зверніться 🆘. "
+                "Або запишіться самостійно за посиланням:",
+                reply_markup=booking.booking_link_keyboard(),
+            )
+            return
 
     level = n.get("level")
     candidate_cats = [c for c in categories if _category_level(c) == level] if level else categories
@@ -182,19 +246,6 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
-    if breed and level:
-        other_levels = [lvl for lvl in ("база", "pro", "топ") if lvl != level]
-        level_hit = False
-        for lvl in other_levels:
-            lvl_cat_ids = {c["id"] for c in categories if _category_level(c) == lvl}
-            lvl_services = [booking.slim_service(s) for s in services if s.get("category_id") in lvl_cat_ids]
-            if booking.match_services_by_breed(breed, lvl_services, pet.get("weight")):
-                level_hit = True
-                break
-        if level_hit:
-            await _show_level_suggestion(message, pet, breed)
-            return
-
     if breed:
         generic = booking.generic_breed_services(candidate_services)
         if generic:
@@ -202,19 +253,6 @@ async def _ask_service(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
     await _show_service_page(message, context, 0)
-
-
-async def _show_level_suggestion(message, pet: dict, breed: str) -> None:
-    text = (
-        f"«{pet['name']}» ({breed}) немає серед послуг цього майстра.\n"
-        "Ця порода є у майстра іншого рівня — оберіть іншого майстра 👇"
-    )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔁 Обрати іншого майстра", callback_data="ns_retry_staff")],
-        [InlineKeyboardButton("🆘 Допомога", callback_data="ns_contact_admin")],
-        [CANCEL_BUTTON],
-    ])
-    await with_retry(message.reply_text, text, reply_markup=kb)
 
 
 async def _show_generic_fallback(message, pet: dict, breed: str, generic_services: list[dict], total_count: int) -> None:
@@ -259,22 +297,29 @@ async def _select_service(message, context: ContextTypes.DEFAULT_TYPE, service_i
         await with_retry(message.reply_text, "Не знайшов цю послугу 😔 Спробуйте ще раз.")
         return
     n["service"] = service
-
-    await with_retry(message.reply_text, "🔎 Шукаю найближчі вільні віконця...")
-    await _search_nearest_slots(message, context)
+    await _show_confirm(message, context)
 
 
 async def _search_nearest_slots(message, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Найближчі вільні віконця майстра без прив'язки до послуги (ще не обрана).
+
+    Без service_ids Altegio віддає час для дефолтної тривалості — цього
+    достатньо, щоб показати клієнту ГОДИНИ; точну тривалість перевіримо
+    повторним запитом уже з конкретною послугою на кроці підтвердження (_confirm).
+    """
     n = context.user_data["nearest"]
     company_id = n["company_id"]
-    service_id = n["service"]["id"]
     staff_id = n.get("staff_id") or 0
 
     try:
-        dates = altegio.get_available_dates(company_id, staff_id=staff_id, service_ids=[service_id])
+        dates = altegio.get_available_dates(company_id, staff_id=staff_id)
     except AltegioError as e:
         logger.error(f"Altegio дати {company_id}: {e}")
-        await with_retry(message.reply_text, "Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося завантажити вільні дати 😔 Спробуйте пізніше або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking.booking_link_keyboard(),
+        )
         return
 
     if not dates:
@@ -284,12 +329,12 @@ async def _search_nearest_slots(message, context: ContextTypes.DEFAULT_TYPE) -> 
     slots = []
     for d in dates[:NEAREST_SLOTS_HORIZON_DAYS]:
         try:
-            times = altegio.get_available_times(company_id, staff_id, d, service_ids=[service_id])
+            times = altegio.get_available_times(company_id, staff_id, d)
         except AltegioError as e:
             logger.warning(f"Altegio час {company_id} {d}: {e}")
             continue
         for t in times:
-            slots.append({"date": d, "time": t["time"], "seance_length": t.get("seance_length")})
+            slots.append({"date": d, "time": t["time"]})
             if len(slots) >= NEAREST_SLOTS_TARGET:
                 break
         if len(slots) >= NEAREST_SLOTS_TARGET:
@@ -309,6 +354,7 @@ async def _show_slots(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton(_slot_label(s), callback_data=f"ns_slot:{i}")]
         for i, s in enumerate(n["slots"])
     ]
+    rows.append([InlineKeyboardButton("🔁 Обрати іншого майстра", callback_data="ns_retry_staff")])
     rows.append([CANCEL_BUTTON])
     await with_retry(message.reply_text, "Найближчі вільні віконця 🕐:", reply_markup=InlineKeyboardMarkup(rows))
 
@@ -322,7 +368,7 @@ async def _select_slot(message, context: ContextTypes.DEFAULT_TYPE, index: int) 
     slot = slots[index]
     n["date"] = slot["date"]
     n["time"] = slot["time"]
-    await _show_confirm(message, context)
+    await _ask_service(message, context)
 
 
 async def _show_confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -360,7 +406,11 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             times = altegio.get_available_times(company_id, n["staff_id"], date_str, service_ids=[service["id"]])
         except AltegioError as e:
             logger.error(f"Altegio час {company_id} {date_str}: {e}")
-            await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
+            await with_retry(message.reply_text,
+                "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘. "
+                "Або запишіться самостійно за посиланням:",
+                reply_markup=booking.booking_link_keyboard(),
+            )
             return
         slot_time = next((t for t in times if t["time"] == time_str), None)
         slot = (n["staff_id"], slot_time["seance_length"]) if slot_time else None
@@ -369,19 +419,28 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             slot = altegio.find_available_staff_for_slot(company_id, service["id"], date_str, time_str)
         except AltegioError as e:
             logger.error(f"Altegio пошук майстра {company_id}: {e}")
-            await with_retry(message.reply_text, "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘.")
+            await with_retry(message.reply_text,
+                "Сталася помилка при перевірці вільного часу 😔 Спробуйте ще раз або зверніться 🆘. "
+                "Або запишіться самостійно за посиланням:",
+                reply_markup=booking.booking_link_keyboard(),
+            )
             return
 
     if slot is None:
         await with_retry(message.reply_text, "На жаль, цей час щойно зайняли 😔 Спробуйте пошук ще раз кнопкою «🔥 Найближчі віконця».")
         context.user_data.pop("nearest", None)
+        await show_menu_button(context.bot, message.chat_id)
         return
     staff_id, seance_length = slot
 
     client = db.get_client_by_id(n["client_id"])
     altegio_client_id = booking.resolve_altegio_client_id(client, company_id)
     if altegio_client_id is None:
-        await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора.")
+        await with_retry(message.reply_text,
+            "Не вдалося оформити запис 😔 Зверніться 🆘 до адміністратора. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking.booking_link_keyboard(),
+        )
         return
 
     comment_parts = [pet["name"]]
@@ -402,7 +461,11 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
     except AltegioError as e:
         logger.error(f"Не вдалося створити запис: {e}")
-        await with_retry(message.reply_text, "Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘.")
+        await with_retry(message.reply_text,
+            "Не вдалося оформити запис 😔 Спробуйте ще раз або зверніться 🆘. "
+            "Або запишіться самостійно за посиланням:",
+            reply_markup=booking.booking_link_keyboard(),
+        )
         return
 
     loc_name = booking.location_name(company_id)
@@ -432,6 +495,7 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=MAIN_MENU,
     )
     context.user_data.pop("nearest", None)
+    await show_menu_button(context.bot, message.chat_id)
 
 
 # --- Диспетчер ---
@@ -443,19 +507,17 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if data == "ns_cancel":
         context.user_data.pop("nearest", None)
+        await show_menu_button(context.bot, update.effective_chat.id)
         await with_retry(query.message.reply_text, "Скасовано.", reply_markup=MAIN_MENU)
         return
 
     n = context.user_data.get("nearest")
     if n is None:
+        await show_menu_button(context.bot, update.effective_chat.id)
         await with_retry(query.message.reply_text,
             "Сесію втрачено — почніть спочатку кнопкою «🔥 Найближчі віконця».",
             reply_markup=MAIN_MENU,
         )
-        return
-
-    if data == "ns_retry_staff":
-        await _ask_staff(query.message, context)
         return
 
     if data == "ns_contact_admin":
@@ -464,6 +526,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if data == "ns_confirm":
         await _confirm(query.message, context)
+        return
+
+    if data == "ns_retry_staff":
+        await _ask_staff(query.message, context)
         return
 
     action, _, rest = data.partition(":")
@@ -491,7 +557,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             n["staff_id"] = None
             n["staff_display_name"] = None
             n["level"] = None
-        await _ask_service(query.message, context)
+        await with_retry(query.message.reply_text, "🔎 Шукаю найближчі вільні віконця...")
+        await _search_nearest_slots(query.message, context)
 
     elif action in ("ns_all", "ns_pg_svc"):
         await _show_service_page(query.message, context, int(rest))

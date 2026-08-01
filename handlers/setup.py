@@ -1,5 +1,5 @@
 """Єдина точка реєстрації всіх handler-ів (webhook_bot.py і bot.py)."""
-# from telegram import BotCommand, MenuButtonCommands
+from telegram import BotCommand, MenuButtonCommands
 from telegram.ext import Application, CallbackQueryHandler, MessageHandler, filters
 
 from handlers import ai_chat, booking, my_bookings, nearest_slots, pets, rating, registration
@@ -8,15 +8,19 @@ from handlers.menu import BTN_BOOK, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_NEAREST, B
 
 
 async def post_init(application: Application) -> None:
-    """Кнопка «Меню» біля поля вводу — вимкнено (для нового чату Telegram і так
-    показує нативну кнопку «СТАРТ»; розкоментувати, якщо знадобиться меню команд
-    і посеред флоу з reply/inline-клавіатурою).
+    """Глобальний дефолт кнопки «Меню» (/start, /cancel) для нових чатів.
+
+    Під час активного флоу (анкета, запис, картки) кожен вхід у флоу приховує
+    її для конкретного чату через handlers.common.hide_menu_button (інакше
+    /start чи /cancel через меню могли б зіткнутися з reply/inline-станом
+    флоу) — handlers.common.show_menu_button повертає її назад, коли клієнт
+    просто пише в чат (handlers/ai_chat.py).
     """
-    # await application.bot.set_my_commands([
-    #     BotCommand("start", "🐾 Почати або перезапустити анкету"),
-    #     BotCommand("cancel", "❌ Скасувати поточну дію"),
-    # ])
-    # await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+    await application.bot.set_my_commands([
+        BotCommand("start", "🐾 Почати або перезапустити анкету"),
+        BotCommand("cancel", "❌ Скасувати поточну дію"),
+    ])
+    await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
 
 
 def register_handlers(application: Application) -> None:
@@ -29,7 +33,7 @@ def register_handlers(application: Application) -> None:
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_MY_PETS}$"), pets.show_pets))
     application.add_handler(CallbackQueryHandler(
         pets.handle_callback,
-        pattern=r"^pet_(list$|show:|edit:|delete:|delete_confirm:)",
+        pattern=r"^pet_(menu$|list$|show:|edit:|delete:|delete_confirm:)",
     ))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_BOOK}$"), booking.book_start))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_PRICE}$"), booking.price_start))

@@ -5,6 +5,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from groq_client import get_response
+from handlers.common import show_menu_button
 from handlers.menu import is_menu_button, handle_menu_button
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = update.message.text
 
     logger.info(f"📨 Повідомлення від {user_id}: {user_message}")
+
+    await show_menu_button(context.bot, update.effective_chat.id)
 
     if is_menu_button(user_message):
         await handle_menu_button(update, context)

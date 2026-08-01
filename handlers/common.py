@@ -5,6 +5,7 @@ import re
 from datetime import date, datetime
 
 import httpx
+from telegram import MenuButtonCommands, MenuButtonDefault
 from telegram.error import NetworkError
 
 from services.notifications import KYIV_TZ
@@ -93,3 +94,15 @@ async def with_retry(func, *args, attempts: int = 7, delay: float = 1.5, **kwarg
                 f"(спроба {attempt}/{attempts}): {e}. Повторюю..."
             )
             await asyncio.sleep(delay)
+
+
+async def hide_menu_button(bot, chat_id: int) -> None:
+    """Приховати нативну кнопку «Меню» (/start, /cancel) на час активного флоу
+    (анкета, запис, картки улюбленців тощо) — інакше клієнт міг би тицьнути
+    /start чи /cancel посеред reply/inline-клавіатури флоу і зіткнути стани."""
+    await with_retry(bot.set_chat_menu_button, chat_id=chat_id, menu_button=MenuButtonDefault())
+
+
+async def show_menu_button(bot, chat_id: int) -> None:
+    """Показати кнопку «Меню» — клієнт поза флоу (вільний AI-чат чи заглушки меню)."""
+    await with_retry(bot.set_chat_menu_button, chat_id=chat_id, menu_button=MenuButtonCommands())
