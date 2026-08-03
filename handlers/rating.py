@@ -1,9 +1,9 @@
 """Оцінка візиту (⭐): callback-флоу після thanks_rating.
 
-Увесь стан флоу — у callback_data (rt_svc:<record_id>:<stars>,
-rt_grm:<record_id>:<service_stars>:<stars>), без context.user_data: клієнт
-може мати кілька thanks_rating-промптів одночасно (декілька недавніх
-візитів), і user_data, ключований лише по user_id, дав би колізію між ними.
+Стан флоу — у callback_data (rt_master:<record_id>:<stars>), без
+context.user_data: клієнт може мати кілька thanks_rating-промптів одночасно
+(декілька недавніх візитів), і user_data, ключований лише по user_id, дав би
+колізію між ними.
 """
 import logging
 
@@ -36,21 +36,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     parts = query.data.split(":")
     prefix = parts[0]
 
-    if prefix == "rt_svc":
-        _, record_id, stars = parts
-        if not _owns_record(record_id, update.effective_user.id):
-            await with_retry(query.edit_message_text, "Ця оцінка недоступна.")
-            return
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton(f"{n}⭐", callback_data=f"rt_grm:{record_id}:{stars}:{n}")
-            for n in range(1, 6)
-        ]])
-        await with_retry(query.edit_message_text, "Дякуємо! А як оцініте роботу грумера?", reply_markup=keyboard)
-        return
-
-    if prefix == "rt_grm":
-        _, record_id, service_stars, groomer_stars = parts
-        service_stars, groomer_stars = int(service_stars), int(groomer_stars)
+    if prefix == "rt_master":
+        _, record_id, groomer_stars = parts
+        groomer_stars = int(groomer_stars)
 
         if not _owns_record(record_id, update.effective_user.id):
             await with_retry(query.edit_message_text, "Ця оцінка недоступна.")
@@ -60,11 +48,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await with_retry(query.edit_message_text, "Дякуємо, вашу оцінку вже отримано! 💛")
             return
 
-        db.create_rating(record_id, service_stars, groomer_stars)
+        db.create_rating(record_id, None, groomer_stars)
         record = db.get_tracked_record(record_id)
 
         review_url = GOOGLE_MAPS_REVIEW_URLS.get((record or {}).get("location_title"))
-        if service_stars == 5 and groomer_stars == 5 and review_url:
+        if groomer_stars == 5 and review_url:
             keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("⭐ Залишити відгук на Google Maps", url=review_url)
             ]])
@@ -75,12 +63,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         else:
             await with_retry(query.edit_message_text, "💛 Дякуємо за вашу оцінку!")
 
-        if service_stars <= 3 or groomer_stars <= 3:
+        if groomer_stars <= 3:
             client = db.get_client_by_id(record["client_id"]) if record else None
             who = (client or {}).get("name")
             phone = (client or {}).get("phone")
             text = (
                 f"⚠️ Низька оцінка від {who or '—'} ({phone or '—'}):\n"
-                f"Послуга: {'⭐' * service_stars}\nГрумер: {'⭐' * groomer_stars}"
+                f"Майстер: {'⭐' * groomer_stars}"
             )
             await notifications.notify_admins_async(context.bot, text)

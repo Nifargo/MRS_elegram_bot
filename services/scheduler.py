@@ -112,9 +112,9 @@ def _handle_thanks_rating(notification: dict, application=None) -> str:
         return "sent"
 
     record_id = record["altegio_record_id"]
-    text = "💛 Дякуємо, що завітали до Mr.Snoopy Grooming!\n\nЯк оцініте якість послуги?"
+    text = "💛 Дякуємо, що завітали до Mr.Snoopy Grooming!\n\nЯк оцініте роботу майстра?"
     keyboard = {"inline_keyboard": [[
-        {"text": f"{n}⭐", "callback_data": f"rt_svc:{record_id}:{n}"} for n in range(1, 6)
+        {"text": f"{n}⭐", "callback_data": f"rt_master:{record_id}:{n}"} for n in range(1, 6)
     ]]}
     return "sent" if notifications.send_telegram_message(client["tg_user_id"], text, reply_markup=keyboard) else "failed"
 
