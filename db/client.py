@@ -207,7 +207,7 @@ def mark_notification(notification_id: int, status: str) -> None:
 
 # --- Оцінки (Фаза 4, частина 2) ---
 
-def create_rating(altegio_record_id: int, service_stars: int, groomer_stars: int) -> dict:
+def create_rating(altegio_record_id: int, service_stars: int | None, groomer_stars: int) -> dict:
     """Записати оцінку послуги/грумера для завершеного візиту."""
     result = supabase.table("ratings").insert({
         "altegio_record_id": altegio_record_id,
