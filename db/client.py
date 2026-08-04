@@ -129,6 +129,22 @@ def get_upcoming_tracked_records(client_id: int) -> list[dict]:
     return result.data
 
 
+def get_active_tracked_records_in_range(company_id: str, start: str, end: str) -> list[dict]:
+    """Активні записи філії в межах вікна дат (для щоденної звірки: скасовані в Altegio
+    записи повністю зникають з відповіді get_records(), тому пропущене скасування
+    ловиться лише порівнянням "що в нас active" з "що повернула Altegio")."""
+    result = (
+        supabase.table("tracked_records")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("status", "active")
+        .gte("starts_at", start)
+        .lte("starts_at", end)
+        .execute()
+    )
+    return result.data
+
+
 def has_tracked_record_since(client_id: int, since: str) -> bool:
     """Чи з'явився активний запис клієнта після вказаного часу (перевірка, чи флоу запису таки завершили)."""
     result = (

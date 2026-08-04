@@ -58,18 +58,29 @@ def _handle(payload: dict) -> None:
         return
 
     data = payload.get("data") or {}
-    record_id = data.get("id") or payload.get("resource_id")
-    if not record_id:
-        logger.warning("Altegio webhook: запис без id, пропускаю")
-        return
-
-    status = payload.get("status")
-    if status == "delete" or data.get("deleted"):
+    if payload.get("status") == "delete":
+        record_id = data.get("id") or payload.get("resource_id")
+        if not record_id:
+            logger.warning("Altegio webhook: запис без id, пропускаю")
+            return
         db.update_tracked_record_status(record_id, "cancelled")
         notifications.cancel_visit_notifications(record_id)
         return
 
     company_id = str(payload.get("company_id") or data.get("company_id") or "")
+    process_record(data, company_id)
+
+
+def process_record(data: dict, company_id: str) -> None:
+    """Обробити один запис Altegio (створення/оновлення/скасування): звірити з
+    tracked_records і (пере)запланувати сповіщення. Спільна логіка для вебхука
+    (вище) і щоденної звірки (services/altegio_reconcile.py) — той самий
+    ідемпотентний шлях, незалежно від того, звідки прийшов запис."""
+    record_id = data.get("id")
+    if not record_id:
+        logger.warning("Altegio: запис без id, пропускаю")
+        return
+
     location_title = _location_name(company_id)
     services = data.get("services") or []
     service_title = (services[0].get("title") if services else None) or data.get("service_title") or ""
@@ -79,7 +90,7 @@ def _handle(payload: dict) -> None:
     duration = data.get("seance_length") or data.get("length")
     ends_dt = starts_dt + timedelta(seconds=duration) if starts_dt and duration else None
 
-    is_cancelled = data.get("attendance") == -1
+    is_cancelled = bool(data.get("deleted")) or data.get("attendance") == -1
     existing = db.get_tracked_record(record_id)
     fields = {
         "altegio_record_id": record_id,
@@ -107,8 +118,9 @@ def _handle(payload: dict) -> None:
             notifications.schedule_visit_notifications(client_id, record_id, starts_dt, ends_dt)
         return
 
-    # Новий запис, якого бот не робив (адміністратор в Altegio або клієнт через
-    # зовнішній Altegio-віджет) — шукаємо клієнта по телефону і пушимо підтвердження.
+    # Новий запис, якого бот не робив (адміністратор в Altegio, клієнт через
+    # зовнішній Altegio-віджет, або пропущений вебхук, підхоплений щоденною
+    # звіркою) — шукаємо клієнта по телефону і пушимо підтвердження.
     phone = normalize_phone((data.get("client") or {}).get("phone") or "")
     matched_client = db.get_client_by_phone(phone) if phone else None
     client_id = matched_client["id"] if matched_client else None
@@ -126,7 +138,7 @@ def _handle(payload: dict) -> None:
     elif starts_dt:
         notifications.schedule_visit_notifications(client_id, record_id, starts_dt, ends_dt)
 
-    if matched_client:
+    if matched_client and not is_cancelled:
         text = (
             "✅ Вас записано на грумінг!\n"
             f"✂️ {service_title}\n"

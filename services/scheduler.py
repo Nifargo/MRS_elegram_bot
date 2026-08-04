@@ -11,13 +11,16 @@ from config import ALTEGIO_BOOKING_WIDGET_URL
 from handlers.common import parse_iso_datetime
 from db import client as db
 from db.client import supabase
-from services import notifications, vaccine_sync
+from services import altegio_reconcile, notifications, vaccine_sync
 from services.notifications import KYIV_TZ
 
 logger = logging.getLogger(__name__)
 
 VACCINE_SYNC_HOUR = 10  # Київ; після цієї години перший виклик /cron за добу запускає синхронізацію
 VACCINE_SYNC_KEY = "vaccine_sync"
+
+RECONCILE_HOUR = 6  # Київ; до відкриття салонів (10:00) — перший клієнт встигне отримати нагадування
+RECONCILE_KEY = "altegio_reconcile"
 
 
 def get_due_notifications() -> list[dict]:
@@ -157,25 +160,33 @@ def _run_daily_tasks() -> None:
     """Задачі, що виконуються раз на добу (а не при кожному 10-хвилинному тику).
 
     Диспетчер розрізняє «щоденне» від «кожні 10 хв» через cron_state: перший
-    виклик /cron після VACCINE_SYNC_HOUR (Київ), для якого ще не було запуску
+    виклик /cron після відповідної години (Київ), для якого ще не було запуску
     сьогодні, і виконує задачу. `cron_state` позначається виконаним лише при
-    повному успіху — якщо стався збій (виняток або хоч один клієнт не
+    повному успіху — якщо стався збій (виняток або хоч один клієнт/запис не
     оброблений), день НЕ фіксується, і задача повториться на наступному тику
-    того ж дня, а не чекатиме до завтра.
+    того ж дня, а не чекатиме до завтра. Задачі незалежні одна від одної —
+    збій однієї не блокує іншу.
     """
     now = datetime.now(KYIV_TZ)
-    if now.hour < VACCINE_SYNC_HOUR:
-        return
     today = now.date().isoformat()
-    if db.get_cron_last_run(VACCINE_SYNC_KEY) == today:
-        return
-    try:
-        success = vaccine_sync.sync_vaccine_dates()
-    except Exception as e:
-        logger.error(f"❌ Помилка щоденної синхронізації вакцинації: {e}", exc_info=True)
-        success = False
-    if success:
-        db.set_cron_last_run(VACCINE_SYNC_KEY, today)
+
+    if now.hour >= RECONCILE_HOUR and db.get_cron_last_run(RECONCILE_KEY) != today:
+        try:
+            success = altegio_reconcile.reconcile_upcoming_records()
+        except Exception as e:
+            logger.error(f"❌ Помилка щоденної звірки записів Altegio: {e}", exc_info=True)
+            success = False
+        if success:
+            db.set_cron_last_run(RECONCILE_KEY, today)
+
+    if now.hour >= VACCINE_SYNC_HOUR and db.get_cron_last_run(VACCINE_SYNC_KEY) != today:
+        try:
+            success = vaccine_sync.sync_vaccine_dates()
+        except Exception as e:
+            logger.error(f"❌ Помилка щоденної синхронізації вакцинації: {e}", exc_info=True)
+            success = False
+        if success:
+            db.set_cron_last_run(VACCINE_SYNC_KEY, today)
 
 
 def run_due(application=None) -> int:

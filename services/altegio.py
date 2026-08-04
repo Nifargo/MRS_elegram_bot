@@ -152,6 +152,15 @@ def get_client_records(company_id: str, client_id: int) -> list[dict]:
     return _request("GET", f"records/{company_id}", params={"client_id": client_id})["data"]
 
 
+def get_records(company_id: str, start_date: str, end_date: str) -> list[dict]:
+    """Список усіх записів філії за період (start_date/end_date у форматі YYYY-MM-DD).
+
+    Той самий ендпоінт, що get_client_records, без client_id — для щоденної
+    звірки з локальним кешем (services/altegio_reconcile.py).
+    """
+    return _request("GET", f"records/{company_id}", params={"start_date": start_date, "end_date": end_date})["data"]
+
+
 def create_record(company_id: str, client_id: int, staff_id: int, service_id: int,
                    datetime_str: str, seance_length: int, comment: str = "") -> dict:
     """Створити запис. datetime_str у форматі 'YYYY-MM-DD HH:MM:SS'."""
