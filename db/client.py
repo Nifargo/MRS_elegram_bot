@@ -81,6 +81,16 @@ def delete_pet(pet_id: int) -> None:
     supabase.table("pets").delete().eq("id", pet_id).execute()
 
 
+def get_pets_with_birth_date() -> list[dict]:
+    """Усі улюбленці з відомою датою народження (щоденна перевірка днів народження, Фаза 7).
+
+    PostgREST не фільтрує по місяцю/дню напряму - зіставлення з "сьогодні"
+    робиться в Python (services/birthday.py), масштаб (кілька філій) це дозволяє.
+    """
+    result = supabase.table("pets").select("id, client_id, name, birth_date").not_.is_("birth_date", "null").execute()
+    return result.data
+
+
 # --- Записи (кеш для нагадувань, Фаза 2+) ---
 
 def get_tracked_record(altegio_record_id: int) -> dict | None:
@@ -140,6 +150,24 @@ def get_active_tracked_records_in_range(company_id: str, start: str, end: str) -
         .eq("status", "active")
         .gte("starts_at", start)
         .lte("starts_at", end)
+        .execute()
+    )
+    return result.data
+
+
+def get_active_tracked_records_with_ends_at() -> list[dict]:
+    """Активні записи з відомим ends_at (перевірка прострочених rebook, Фаза 7).
+
+    Без фільтра по даті - tracked_records кешує лише записи, зроблені через
+    бота/вебхук (не всю історію Altegio), тому масштаб невеликий; вибір
+    "останнього запису клієнта" і "прострочено 6+ тижнів" - у Python
+    (services/rebook_promo.py).
+    """
+    result = (
+        supabase.table("tracked_records")
+        .select("altegio_record_id, client_id, company_id, location_title, ends_at")
+        .eq("status", "active")
+        .not_.is_("ends_at", "null")
         .execute()
     )
     return result.data

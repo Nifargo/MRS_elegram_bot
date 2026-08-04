@@ -11,7 +11,7 @@ from config import ALTEGIO_BOOKING_WIDGET_URL
 from handlers.common import parse_iso_datetime
 from db import client as db
 from db.client import supabase
-from services import altegio_reconcile, notifications, vaccine_sync
+from services import altegio_reconcile, birthday, notifications, rebook_promo, vaccine_sync
 from services.notifications import KYIV_TZ
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,12 @@ VACCINE_SYNC_KEY = "vaccine_sync"
 
 RECONCILE_HOUR = 6  # Київ; до відкриття салонів (10:00) — перший клієнт встигне отримати нагадування
 RECONCILE_KEY = "altegio_reconcile"
+
+BIRTHDAY_HOUR = 9  # Київ; до відкриття салонів
+BIRTHDAY_KEY = "birthday"
+
+REBOOK_PROMO_HOUR = 9  # Київ; "завтра є місце" має дійти клієнту заздалегідь, до відкриття
+REBOOK_PROMO_KEY = "rebook_promo"
 
 
 def get_due_notifications() -> list[dict]:
@@ -187,6 +193,24 @@ def _run_daily_tasks() -> None:
             success = False
         if success:
             db.set_cron_last_run(VACCINE_SYNC_KEY, today)
+
+    if now.hour >= BIRTHDAY_HOUR and db.get_cron_last_run(BIRTHDAY_KEY) != today:
+        try:
+            success = birthday.send_birthday_greetings()
+        except Exception as e:
+            logger.error(f"❌ Помилка щоденних привітань з днем народження: {e}", exc_info=True)
+            success = False
+        if success:
+            db.set_cron_last_run(BIRTHDAY_KEY, today)
+
+    if now.hour >= REBOOK_PROMO_HOUR and db.get_cron_last_run(REBOOK_PROMO_KEY) != today:
+        try:
+            success = rebook_promo.send_rebook_promos()
+        except Exception as e:
+            logger.error(f"❌ Помилка щоденного промо вільних місць: {e}", exc_info=True)
+            success = False
+        if success:
+            db.set_cron_last_run(REBOOK_PROMO_KEY, today)
 
 
 def run_due(application=None) -> int:
