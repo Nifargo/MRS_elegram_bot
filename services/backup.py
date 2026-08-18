@@ -7,19 +7,16 @@ PythonAnywhere: диск живе на тій самій машині, що й �
 проблем з акаунтом — тобто не покриває половину сценаріїв, для яких бекап і
 затівається.
 """
-import logging
 from datetime import datetime
 
 from db.client import supabase
 from services.notifications import KYIV_TZ
 
-logger = logging.getLogger(__name__)
+PAGE_SIZE = 1000  # наше припущення про стелю однієї відповіді PostgREST
 
-PAGE_SIZE = 1000  # Supabase REST більше за один запит не віддає
-
-# Таблиця -> колонка сортування. Порядок обов'язковий: без нього .range()
-# може продублювати або пропустити рядки між сторінками. У cron_state немає
-# id — первинний ключ там текстовий `key`.
+# Таблиця -> колонка унікального ключа (усі — первинні). Порядок обов'язковий:
+# без нього сторінкове читання може продублювати або пропустити рядки. У
+# cron_state немає id — первинний ключ там текстовий `key`.
 #
 # Список явний, а не автовизначений: Supabase REST не вміє перелічувати
 # таблиці. Побічний ефект корисний — нову таблицю доводиться свідомо додати
@@ -39,27 +36,31 @@ BACKUP_TABLES = {
 def _fetch_table(table: str, order_column: str) -> list[dict]:
     """Усі рядки таблиці, сторінками не більше PAGE_SIZE.
 
-    Зупиняємось на порожній сторінці, а не на першій коротшій за PAGE_SIZE, і
-    зсув рахуємо від фактично отриманої кількості рядків. PAGE_SIZE — лише наше
-    припущення про стелю PostgREST: якщо `db-max-rows` на боці Supabase
-    менший, перша ж сторінка прийде коротшою, і умова «коротша за PAGE_SIZE»
-    вирішила б, що таблиця закінчилась, — дамп тихо недочитав би решту.
-    Для бекапу це найгірший клас помилки: файл виглядає нормальним, а даних у
-    ньому немає. Ціна такої умови — один зайвий (порожній) запит у кінці.
+    Кожна наступна сторінка читається «від останнього ключа» (`.gt()`), а не за
+    зсувом: зсув залежить від кількості вже прочитаного, тож видалення рядка між
+    двома запитами зсуває решту, і один рядок тихо не потрапляє в дамп.
+    Видалення в рантаймі реальні — `db/client.py::delete_pet()` і
+    `delete_pending_notifications_for_record()` (останнє йде з обробки вебхука
+    Altegio, тобто може статись посеред дампа).
+
+    Зупиняємось на порожній сторінці, а не на першій коротшій за PAGE_SIZE:
+    PAGE_SIZE — лише наше припущення про стелю PostgREST, а якщо `db-max-rows`
+    на боці Supabase менший, перша ж сторінка прийде коротшою, і умова «коротша
+    за PAGE_SIZE» вирішила б, що таблиця закінчилась. Для бекапу це найгірший
+    клас помилки: файл виглядає нормальним, а даних у ньому немає. Ціна такої
+    умови — один зайвий (порожній) запит у кінці.
     """
     rows: list[dict] = []
+    last_key = None
     while True:
-        page = (
-            supabase.table(table)
-            .select("*")
-            .order(order_column)
-            .range(len(rows), len(rows) + PAGE_SIZE - 1)
-            .execute()
-        )
-        batch = page.data or []
+        query = supabase.table(table).select("*").order(order_column).limit(PAGE_SIZE)
+        if last_key is not None:
+            query = query.gt(order_column, last_key)
+        batch = query.execute().data or []
         if not batch:
             return rows
         rows.extend(batch)
+        last_key = batch[-1][order_column]
 
 
 def build_dump() -> dict:
