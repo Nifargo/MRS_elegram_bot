@@ -37,7 +37,16 @@ BACKUP_TABLES = {
 
 
 def _fetch_table(table: str, order_column: str) -> list[dict]:
-    """Усі рядки таблиці, сторінками по PAGE_SIZE."""
+    """Усі рядки таблиці, сторінками не більше PAGE_SIZE.
+
+    Зупиняємось на порожній сторінці, а не на першій коротшій за PAGE_SIZE, і
+    зсув рахуємо від фактично отриманої кількості рядків. PAGE_SIZE — лише наше
+    припущення про стелю PostgREST: якщо `db-max-rows` на боці Supabase
+    менший, перша ж сторінка прийде коротшою, і умова «коротша за PAGE_SIZE»
+    вирішила б, що таблиця закінчилась, — дамп тихо недочитав би решту.
+    Для бекапу це найгірший клас помилки: файл виглядає нормальним, а даних у
+    ньому немає. Ціна такої умови — один зайвий (порожній) запит у кінці.
+    """
     rows: list[dict] = []
     while True:
         page = (
@@ -48,9 +57,9 @@ def _fetch_table(table: str, order_column: str) -> list[dict]:
             .execute()
         )
         batch = page.data or []
-        rows.extend(batch)
-        if len(batch) < PAGE_SIZE:
+        if not batch:
             return rows
+        rows.extend(batch)
 
 
 def build_dump() -> dict:
