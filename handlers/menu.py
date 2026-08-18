@@ -30,8 +30,9 @@ MAIN_MENU = ReplyKeyboardMarkup(
 # BTN_BOOK/BTN_PRICE обробляються в handlers/booking.py (Фаза 2).
 # BTN_NEAREST обробляється в handlers/nearest_slots.py (Фаза 11).
 # BTN_MY_BOOKINGS обробляється в handlers/my_bookings.py (Фаза 3).
+# BTN_HISTORY обробляється в handlers/history.py (Фаза 5).
 # BTN_HELP обробляється нижче (Фаза 9).
-_PLACEHOLDER_BUTTONS = {BTN_HISTORY, BTN_BONUSES}
+_PLACEHOLDER_BUTTONS = {BTN_BONUSES}
 
 
 def is_menu_button(text: str) -> bool:

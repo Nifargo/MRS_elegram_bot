@@ -2,9 +2,11 @@
 from telegram import BotCommand, MenuButtonCommands
 from telegram.ext import Application, CallbackQueryHandler, MessageHandler, filters
 
-from handlers import ai_chat, booking, my_bookings, nearest_slots, pets, rating, rebook_promo, registration
+from handlers import (
+    ai_chat, booking, history, my_bookings, nearest_slots, pets, rating, rebook_promo, registration,
+)
 from handlers.error_handler import handle_error
-from handlers.menu import BTN_BOOK, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_NEAREST, BTN_PRICE
+from handlers.menu import BTN_BOOK, BTN_HISTORY, BTN_MY_BOOKINGS, BTN_MY_PETS, BTN_NEAREST, BTN_PRICE
 
 
 async def post_init(application: Application) -> None:
@@ -42,6 +44,8 @@ def register_handlers(application: Application) -> None:
     application.add_handler(CallbackQueryHandler(nearest_slots.handle_callback, pattern=r"^ns_"))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_MY_BOOKINGS}$"), my_bookings.show_bookings))
     application.add_handler(CallbackQueryHandler(my_bookings.handle_callback, pattern=r"^mb_"))
+    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_HISTORY}$"), history.show_history))
+    application.add_handler(CallbackQueryHandler(history.handle_callback, pattern=r"^hs_"))
     application.add_handler(CallbackQueryHandler(rating.handle_callback, pattern=r"^rt_"))
     application.add_handler(CallbackQueryHandler(rebook_promo.handle_callback, pattern=r"^rp_"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_chat.handle_message))
