@@ -621,7 +621,10 @@ async def _confirm_booking(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "altegio_record_id": record["id"],
             "client_id": b["client_id"],
             "pet_id": pet["id"],
-            "starts_at": record.get("datetime") or starts_dt.isoformat(),
+            # Не `record["datetime"]`: Altegio віддає там offset +03:00 і в
+            # зимовий сезон, коли Київ у +02:00. `starts_dt` — час, який обрав
+            # сам клієнт, локалізований у Київ, тож він завжди правильний.
+            "starts_at": starts_dt.isoformat(),
             "ends_at": ends_dt.isoformat(),
             "service_title": service["title"],
             "location_title": loc_name,

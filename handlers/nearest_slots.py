@@ -474,7 +474,9 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "altegio_record_id": record["id"],
             "client_id": n["client_id"],
             "pet_id": pet["id"],
-            "starts_at": record.get("datetime") or to_kyiv_iso(date_str, time_str),
+            # Не `record["datetime"]`: Altegio віддає там offset +03:00 і в
+            # зимовий сезон, коли Київ у +02:00 (див. services/altegio_webhook.py).
+            "starts_at": to_kyiv_iso(date_str, time_str),
             "service_title": service["title"],
             "location_title": loc_name,
             "status": "active",

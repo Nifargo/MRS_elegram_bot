@@ -84,7 +84,11 @@ def process_record(data: dict, company_id: str) -> None:
     location_title = _location_name(company_id)
     services = data.get("services") or []
     service_title = (services[0].get("title") if services else None) or data.get("service_title") or ""
-    starts_at = data.get("datetime") or data.get("date")
+    # Наївний `date` — перший, `datetime` лише як фолбек: Altegio ставить у
+    # `datetime` offset +03:00 незалежно від сезону, тож для зимових візитів
+    # (Київ у +02:00) час зсувався б на годину раніше — разом з reminder_2h і
+    # часом у «🗓 Мої записи». `date` — справжній час на годиннику салону.
+    starts_at = data.get("date") or data.get("datetime")
     staff_id = data.get("staff_id") or (data.get("staff") or {}).get("id")
     starts_dt = _parse_kyiv(starts_at)
     duration = data.get("seance_length") or data.get("length")
