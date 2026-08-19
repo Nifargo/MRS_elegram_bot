@@ -1,6 +1,6 @@
-"""build_dump(): усі таблиці в дампі, великі таблиці читаються сторінками."""
+"""Тижневий бекап: склад дампа, сторінкове читання, гейтування по тижню, відправка."""
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
 from services import backup
@@ -124,6 +124,107 @@ class BuildDumpTest(unittest.TestCase):
         backup.build_dump()
 
         self.assertEqual(query.order.call_args.args, ("key",))
+
+
+class BackupDueTest(unittest.TestCase):
+    """Субота — штатний день; неділя — підхват, якщо cron проспав суботу."""
+
+    def test_due_on_saturday_after_hour(self):
+        now = datetime(2026, 8, 22, 7, 5, tzinfo=backup.KYIV_TZ)  # субота
+        self.assertTrue(backup.is_backup_due(now, None))
+
+    def test_not_due_before_hour(self):
+        now = datetime(2026, 8, 22, 6, 59, tzinfo=backup.KYIV_TZ)
+        self.assertFalse(backup.is_backup_due(now, None))
+
+    def test_not_due_on_weekday(self):
+        now = datetime(2026, 8, 19, 12, 0, tzinfo=backup.KYIV_TZ)  # середа
+        self.assertFalse(backup.is_backup_due(now, None))
+
+    def test_not_due_twice_in_same_week(self):
+        now = datetime(2026, 8, 22, 9, 0, tzinfo=backup.KYIV_TZ)
+        self.assertFalse(backup.is_backup_due(now, "2026-08-22"))
+
+    def test_sunday_catches_up_missed_saturday(self):
+        now = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)  # неділя
+        self.assertTrue(backup.is_backup_due(now, None))
+
+    def test_sunday_skipped_when_saturday_done(self):
+        now = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)
+        self.assertFalse(backup.is_backup_due(now, "2026-08-22"))
+
+    def test_due_again_next_week(self):
+        now = datetime(2026, 8, 29, 7, 0, tzinfo=backup.KYIV_TZ)  # наступна субота
+        self.assertTrue(backup.is_backup_due(now, "2026-08-22"))
+
+    def test_saturday_of_week_is_same_for_saturday_and_sunday(self):
+        saturday = date(2026, 8, 22)
+        sunday = date(2026, 8, 23)
+        self.assertEqual(backup.saturday_of_week(saturday), saturday)
+        self.assertEqual(backup.saturday_of_week(sunday), saturday)
+
+
+class SendWeeklyBackupTest(unittest.TestCase):
+    @patch("services.backup.BACKUP_CHAT_ID", None)
+    @patch("services.backup.notifications")
+    @patch("services.backup.build_dump")
+    def test_does_nothing_without_chat_id(self, build_dump, notifications):
+        # Мовчазна відмова має лишати слід у логах, інакше незадана змінна
+        # виглядає як «бекап працює». assertLogs заразом тримає вивід тестів
+        # чистим.
+        with self.assertLogs("services.backup", "WARNING"):
+            result = backup.send_weekly_backup()
+
+        self.assertFalse(result)
+        notifications.send_telegram_document.assert_not_called()
+        build_dump.assert_not_called()
+
+    @patch("services.backup.BACKUP_CHAT_ID", 42)
+    @patch("services.backup.notifications")
+    @patch("services.backup.build_dump")
+    def test_sends_json_file_with_counts_in_caption(self, build_dump, notifications):
+        build_dump.return_value = {
+            "created_at": "2026-08-22T07:00:00+03:00",
+            "counts": {"clients": 3, "pets": 4, "ratings": 0},
+            "tables": {"clients": [{"id": 1}], "pets": [], "ratings": []},
+        }
+        notifications.send_telegram_document.return_value = True
+
+        result = backup.send_weekly_backup()
+
+        self.assertTrue(result)
+        args = notifications.send_telegram_document.call_args
+        self.assertEqual(args.args[0], 42)
+        self.assertTrue(args.args[1].startswith("mrsnoopy-backup-"))
+        self.assertTrue(args.args[1].endswith(".json"))
+        self.assertIn(b'"clients"', args.args[2])
+        self.assertIn("clients: 3", args.kwargs["caption"])
+        notifications.notify_admins.assert_not_called()
+
+    @patch("services.backup.BACKUP_CHAT_ID", 42)
+    @patch("services.backup.notifications")
+    @patch("services.backup.build_dump")
+    def test_failed_delivery_notifies_admins(self, build_dump, notifications):
+        build_dump.return_value = {"created_at": "x", "counts": {"clients": 3}, "tables": {"clients": []}}
+        notifications.send_telegram_document.return_value = False
+
+        result = backup.send_weekly_backup()
+
+        self.assertFalse(result)
+        notifications.notify_admins.assert_called_once()
+
+    @patch("services.backup.BACKUP_CHAT_ID", 42)
+    @patch("services.backup.notifications")
+    @patch("services.backup.build_dump")
+    def test_dump_failure_notifies_admins_and_does_not_send(self, build_dump, notifications):
+        build_dump.side_effect = RuntimeError("Supabase недоступний")
+
+        with self.assertLogs("services.backup", "ERROR"):
+            result = backup.send_weekly_backup()
+
+        self.assertFalse(result)
+        notifications.send_telegram_document.assert_not_called()
+        notifications.notify_admins.assert_called_once()
 
 
 if __name__ == "__main__":

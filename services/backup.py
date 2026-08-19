@@ -7,10 +7,16 @@ PythonAnywhere: диск живе на тій самій машині, що й �
 проблем з акаунтом — тобто не покриває половину сценаріїв, для яких бекап і
 затівається.
 """
-from datetime import datetime
+import json
+import logging
+from datetime import date, datetime, timedelta
 
+from config import BACKUP_CHAT_ID
 from db.client import supabase
+from services import notifications
 from services.notifications import KYIV_TZ
+
+logger = logging.getLogger(__name__)
 
 PAGE_SIZE = 1000  # наше припущення про стелю однієї відповіді PostgREST
 
@@ -31,6 +37,10 @@ BACKUP_TABLES = {
     "chat_messages": "id",
     "cron_state": "key",
 }
+
+BACKUP_HOUR = 7  # Київ; не збігається з 9 і 10, коли cron шле повідомлення клієнтам
+BACKUP_KEY = "backup"
+SATURDAY = 5  # datetime.weekday(): понеділок 0 … субота 5, неділя 6
 
 
 def _fetch_table(table: str, order_column: str) -> list[dict]:
@@ -71,3 +81,52 @@ def build_dump() -> dict:
         "counts": {name: len(rows) for name, rows in tables.items()},
         "tables": tables,
     }
+
+
+def saturday_of_week(day: date) -> date:
+    """Субота тижня, до якого належить день (тиждень від понеділка)."""
+    return day - timedelta(days=day.weekday()) + timedelta(days=SATURDAY)
+
+
+def is_backup_due(now: datetime, last_run: str | None) -> bool:
+    """Чи пора робити тижневий бекап.
+
+    Позначка в cron_state — дата суботи цього тижня, а не номер ISO-тижня, бо
+    колонка last_run_date типу date. Неділя лишена як підхват: якщо зовнішній
+    cron (cron-job.org) проспить усю суботу, бекап зробиться в неділю, а не
+    пропаде на тиждень. Позначка в обидва дні та сама, тож двічі не вистрелить.
+    """
+    if now.weekday() < SATURDAY or now.hour < BACKUP_HOUR:
+        return False
+    return last_run != saturday_of_week(now.date()).isoformat()
+
+
+def send_weekly_backup() -> bool:
+    """Зібрати дамп і надіслати файлом власнику. True — Telegram підтвердив доставку."""
+    if not BACKUP_CHAT_ID:
+        logger.warning("BACKUP_CHAT_ID не задано — тижневий бекап нікуди слати")
+        return False
+
+    today = datetime.now(KYIV_TZ).date().isoformat()
+    try:
+        dump = build_dump()
+        # default=str страхує від numeric, який PostgREST може віддати як Decimal
+        # (pets.weight); ensure_ascii=False — щоб імена лишились читабельними.
+        content = json.dumps(dump, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+    except Exception as e:
+        logger.error(f"❌ Не вдалося зібрати дамп Supabase: {e}", exc_info=True)
+        notifications.notify_admins(f"⚠️ Тижневий бекап Supabase не зібрався ({today}): {e}")
+        return False
+
+    counts = ", ".join(f"{name}: {n}" for name, n in dump["counts"].items() if n)
+    delivered = notifications.send_telegram_document(
+        BACKUP_CHAT_ID,
+        f"mrsnoopy-backup-{today}.json",
+        content,
+        caption=f"🗄 Бекап Supabase {today}\n{counts or 'усі таблиці порожні'}",
+    )
+    if not delivered:
+        # Бекап, який тихо не працює півроку, гірший за відсутній —
+        # про відсутній хоча б відомо.
+        notifications.notify_admins(f"⚠️ Тижневий бекап Supabase не надіслався ({today}) — деталі в логах.")
+    return delivered
