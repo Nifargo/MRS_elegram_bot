@@ -227,5 +227,168 @@ class SendWeeklyBackupTest(unittest.TestCase):
         notifications.notify_admins.assert_called_once()
 
 
+class SchedulerWiringTest(unittest.TestCase):
+    """Гілка в _run_daily_tasks(): бекап викликається і позначається датою суботи."""
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_saturday_run_marks_week_done(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 22, 7, 30, tzinfo=backup.KYIV_TZ)
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = True
+        mock_backup.send_weekly_backup.return_value = True
+        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
+        mock_backup.BACKUP_KEY = "backup"
+
+        scheduler._run_daily_tasks()
+
+        mock_backup.send_weekly_backup.assert_called_once()
+        db.set_cron_last_run.assert_any_call("backup", "2026-08-22")
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_failed_backup_does_not_mark_week_done(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 22, 7, 30, tzinfo=backup.KYIV_TZ)
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = True
+        mock_backup.send_weekly_backup.return_value = False
+        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
+        mock_backup.BACKUP_KEY = "backup"
+
+        scheduler._run_daily_tasks()
+
+        calls = [c.args for c in db.set_cron_last_run.call_args_list]
+        self.assertNotIn(("backup", "2026-08-22"), calls)
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_sunday_run_marks_saturday_of_week_not_today(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        """Підхват у неділю позначає суботу — інакше каденція стала б добовою.
+
+        Тест саме на неділю: у суботу `today` і субота тижня — та сама дата, тож
+        помилкове `today` в позначці лишилось би непоміченим.
+        """
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = True
+        mock_backup.send_weekly_backup.return_value = True
+        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
+        mock_backup.BACKUP_KEY = "backup"
+
+        scheduler._run_daily_tasks()
+
+        db.set_cron_last_run.assert_any_call("backup", "2026-08-22")
+        calls = [c.args for c in db.set_cron_last_run.call_args_list]
+        self.assertNotIn(("backup", "2026-08-23"), calls)
+        self.assertEqual(mock_backup.saturday_of_week.call_args.args, (date(2026, 8, 23),))
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_decision_gets_kyiv_now_and_backup_key(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        """`is_backup_due()` отримує той самий київський `now`, що й решта задач.
+
+        Наївний або UTC-час тихо зсунув би поріг 7:00, а читання позначки не тим
+        ключем зробило б тижневу каденцію залежною від чужої задачі.
+        """
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 22, 7, 30, tzinfo=backup.KYIV_TZ)
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = True
+        mock_backup.send_weekly_backup.return_value = True
+        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
+        mock_backup.BACKUP_KEY = "backup"
+
+        scheduler._run_daily_tasks()
+
+        mock_datetime.now.assert_called_once_with(scheduler.KYIV_TZ)
+        self.assertIs(mock_backup.is_backup_due.call_args.args[0], mock_datetime.now.return_value)
+        self.assertEqual(mock_backup.is_backup_due.call_args.args[1], None)
+        db.get_cron_last_run.assert_any_call("backup")
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_not_due_skips_backup(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        """У будній день (рішення — за backup.is_backup_due()) дамп не збирається."""
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 19, 12, 0, tzinfo=backup.KYIV_TZ)
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = False
+        mock_backup.BACKUP_KEY = "backup"
+
+        scheduler._run_daily_tasks()
+
+        mock_backup.send_weekly_backup.assert_not_called()
+        calls = [c.args for c in db.set_cron_last_run.call_args_list]
+        self.assertNotIn("backup", [key for key, *_ in calls])
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_backup_exception_does_not_mark_week_done(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 22, 7, 30, tzinfo=backup.KYIV_TZ)
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = True
+        mock_backup.send_weekly_backup.side_effect = RuntimeError("Supabase недоступний")
+        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
+        mock_backup.BACKUP_KEY = "backup"
+
+        with self.assertLogs("services.scheduler", "ERROR"):
+            scheduler._run_daily_tasks()
+
+        calls = [c.args for c in db.set_cron_last_run.call_args_list]
+        self.assertNotIn(("backup", "2026-08-22"), calls)
+
+
 if __name__ == "__main__":
     unittest.main()

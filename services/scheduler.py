@@ -11,7 +11,7 @@ from config import ALTEGIO_BOOKING_WIDGET_URL
 from handlers.common import parse_iso_datetime
 from db import client as db
 from db.client import supabase
-from services import altegio_reconcile, birthday, notifications, rebook_promo, vaccine_sync
+from services import altegio_reconcile, backup, birthday, notifications, rebook_promo, vaccine_sync
 from services.notifications import KYIV_TZ
 
 logger = logging.getLogger(__name__)
@@ -211,6 +211,18 @@ def _run_daily_tasks() -> None:
             success = False
         if success:
             db.set_cron_last_run(REBOOK_PROMO_KEY, today)
+
+    # Єдина задача не з добовою, а з тижневою каденцією, тому власне рішення
+    # «чи пора» (субота/неділя + година) живе в backup.is_backup_due(), а в
+    # cron_state пишеться дата суботи цього тижня, а не `today`.
+    if backup.is_backup_due(now, db.get_cron_last_run(backup.BACKUP_KEY)):
+        try:
+            success = backup.send_weekly_backup()
+        except Exception as e:
+            logger.error(f"❌ Помилка тижневого бекапу Supabase: {e}", exc_info=True)
+            success = False
+        if success:
+            db.set_cron_last_run(backup.BACKUP_KEY, backup.saturday_of_week(now.date()).isoformat())
 
 
 def run_due(application=None) -> int:
