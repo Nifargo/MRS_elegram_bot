@@ -213,9 +213,18 @@ def _run_daily_tasks() -> None:
             db.set_cron_last_run(REBOOK_PROMO_KEY, today)
 
     # Єдина задача не з добовою, а з тижневою каденцією, тому власне рішення
-    # «чи пора» (субота/неділя + година) живе в backup.is_backup_due(), а в
-    # cron_state пишеться дата суботи цього тижня, а не `today`.
-    if backup.is_backup_due(now, db.get_cron_last_run(backup.BACKUP_KEY)):
+    # «чи пора» (субота/неділя + година, обидві позначки) цілком живе в
+    # backup.is_backup_due(), а тут лишається тільки запис позначок.
+    if backup.is_backup_due(
+        now,
+        db.get_cron_last_run(backup.BACKUP_KEY),
+        db.get_cron_last_run(backup.BACKUP_ATTEMPT_KEY),
+    ):
+        # Спроба позначається ДО дампа: інакше падіння всередині (Supabase,
+        # Telegram) лишило б добу непозначеною, і наступний тик через 10 хвилин
+        # почав би все спочатку. Позначка успіху — датою суботи тижня, тож
+        # каденція лишається тижневою, а спроб на тиждень рівно дві.
+        db.set_cron_last_run(backup.BACKUP_ATTEMPT_KEY, today)
         try:
             success = backup.send_weekly_backup()
         except Exception as e:

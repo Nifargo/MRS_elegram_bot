@@ -131,31 +131,48 @@ class BackupDueTest(unittest.TestCase):
 
     def test_due_on_saturday_after_hour(self):
         now = datetime(2026, 8, 22, 7, 5, tzinfo=backup.KYIV_TZ)  # субота
-        self.assertTrue(backup.is_backup_due(now, None))
+        self.assertTrue(backup.is_backup_due(now, None, None))
 
     def test_not_due_before_hour(self):
         now = datetime(2026, 8, 22, 6, 59, tzinfo=backup.KYIV_TZ)
-        self.assertFalse(backup.is_backup_due(now, None))
+        self.assertFalse(backup.is_backup_due(now, None, None))
 
     def test_not_due_on_weekday(self):
         now = datetime(2026, 8, 19, 12, 0, tzinfo=backup.KYIV_TZ)  # середа
-        self.assertFalse(backup.is_backup_due(now, None))
+        self.assertFalse(backup.is_backup_due(now, None, None))
 
     def test_not_due_twice_in_same_week(self):
         now = datetime(2026, 8, 22, 9, 0, tzinfo=backup.KYIV_TZ)
-        self.assertFalse(backup.is_backup_due(now, "2026-08-22"))
+        self.assertFalse(backup.is_backup_due(now, "2026-08-22", "2026-08-22"))
 
     def test_sunday_catches_up_missed_saturday(self):
         now = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)  # неділя
-        self.assertTrue(backup.is_backup_due(now, None))
+        self.assertTrue(backup.is_backup_due(now, None, None))
 
     def test_sunday_skipped_when_saturday_done(self):
         now = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)
-        self.assertFalse(backup.is_backup_due(now, "2026-08-22"))
+        self.assertFalse(backup.is_backup_due(now, "2026-08-22", "2026-08-22"))
 
     def test_due_again_next_week(self):
         now = datetime(2026, 8, 29, 7, 0, tzinfo=backup.KYIV_TZ)  # наступна субота
-        self.assertTrue(backup.is_backup_due(now, "2026-08-22"))
+        self.assertTrue(backup.is_backup_due(now, "2026-08-22", "2026-08-22"))
+
+    def test_not_due_twice_in_same_day_after_failed_attempt(self):
+        """Стійкий збій дає одну спробу на добу, а не одну на кожен тик cron.
+
+        Позначка успіху при збої не ставиться, а зовнішній cron стукає кожні
+        ~10 хвилин: без окремої позначки спроби гілка зібрала б повний дамп і
+        сповістила адмінів ~246 разів за вихідні.
+        """
+        saturday = datetime(2026, 8, 22, 9, 0, tzinfo=backup.KYIV_TZ)
+        sunday = datetime(2026, 8, 23, 9, 0, tzinfo=backup.KYIV_TZ)
+        self.assertFalse(backup.is_backup_due(saturday, None, "2026-08-22"))
+        self.assertFalse(backup.is_backup_due(sunday, None, "2026-08-23"))
+
+    def test_sunday_retries_after_failed_saturday_attempt(self):
+        """Підхват у неділю живий: позначка спроби добова, а не тижнева."""
+        now = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)  # неділя
+        self.assertTrue(backup.is_backup_due(now, None, "2026-08-22"))
 
     def test_saturday_of_week_is_same_for_saturday_and_sunday(self):
         saturday = date(2026, 8, 22)
@@ -179,6 +196,22 @@ class SendWeeklyBackupTest(unittest.TestCase):
         notifications.send_telegram_document.assert_not_called()
         build_dump.assert_not_called()
 
+    @patch("services.backup.BACKUP_CHAT_ID", None)
+    @patch("services.backup.notifications")
+    @patch("services.backup.build_dump")
+    def test_missing_chat_id_notifies_admins(self, build_dump, notifications):
+        """Незадана змінна — найімовірніший збій у проді, тож не лише в лог.
+
+        `BACKUP_CHAT_ID` додається в оточення PythonAnywhere руками, і рядок у
+        лозі ніхто не читає — зовні «нема бекапу» не відрізнити від «бекап
+        працює». Адмін-група налаштована окремою змінною, тож цей канал живий
+        саме тоді, коли `BACKUP_CHAT_ID` немає.
+        """
+        with self.assertLogs("services.backup", "WARNING"):
+            backup.send_weekly_backup()
+
+        notifications.notify_admins.assert_called_once()
+
     @patch("services.backup.BACKUP_CHAT_ID", 42)
     @patch("services.backup.notifications")
     @patch("services.backup.build_dump")
@@ -199,6 +232,11 @@ class SendWeeklyBackupTest(unittest.TestCase):
         self.assertTrue(args.args[1].endswith(".json"))
         self.assertIn(b'"clients"', args.args[2])
         self.assertIn("clients: 3", args.kwargs["caption"])
+        # Порожня таблиця лишається в підписі: `ratings: 0` — це або норма, або
+        # тривога (закрились права, таблицю перейменувала міграція, помилковий
+        # delete), а зникнення рядка не помітно ніяк. Підпис — єдиний артефакт,
+        # який власник читає, не відкриваючи файл.
+        self.assertIn("ratings: 0", args.kwargs["caption"])
         notifications.notify_admins.assert_not_called()
 
     @patch("services.backup.BACKUP_CHAT_ID", 42)
@@ -230,6 +268,13 @@ class SendWeeklyBackupTest(unittest.TestCase):
 class SchedulerWiringTest(unittest.TestCase):
     """Гілка в _run_daily_tasks(): бекап викликається і позначається датою суботи."""
 
+    @staticmethod
+    def _stub_backup(mock_backup):
+        """Ключі cron_state — справжні рядки, інакше в позначки летять моки."""
+        mock_backup.BACKUP_KEY = "backup"
+        mock_backup.BACKUP_ATTEMPT_KEY = "backup_attempt"
+        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
+
     @patch("services.scheduler.rebook_promo")
     @patch("services.scheduler.birthday")
     @patch("services.scheduler.vaccine_sync")
@@ -246,8 +291,7 @@ class SchedulerWiringTest(unittest.TestCase):
         db.get_cron_last_run.return_value = None
         mock_backup.is_backup_due.return_value = True
         mock_backup.send_weekly_backup.return_value = True
-        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
-        mock_backup.BACKUP_KEY = "backup"
+        self._stub_backup(mock_backup)
 
         scheduler._run_daily_tasks()
 
@@ -270,8 +314,7 @@ class SchedulerWiringTest(unittest.TestCase):
         db.get_cron_last_run.return_value = None
         mock_backup.is_backup_due.return_value = True
         mock_backup.send_weekly_backup.return_value = False
-        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
-        mock_backup.BACKUP_KEY = "backup"
+        self._stub_backup(mock_backup)
 
         scheduler._run_daily_tasks()
 
@@ -299,8 +342,7 @@ class SchedulerWiringTest(unittest.TestCase):
         db.get_cron_last_run.return_value = None
         mock_backup.is_backup_due.return_value = True
         mock_backup.send_weekly_backup.return_value = True
-        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
-        mock_backup.BACKUP_KEY = "backup"
+        self._stub_backup(mock_backup)
 
         scheduler._run_daily_tasks()
 
@@ -316,29 +358,30 @@ class SchedulerWiringTest(unittest.TestCase):
     @patch("services.scheduler.backup")
     @patch("services.scheduler.db")
     @patch("services.scheduler.datetime")
-    def test_decision_gets_kyiv_now_and_backup_key(
+    def test_decision_gets_kyiv_now_and_both_marks(
         self, mock_datetime, db, mock_backup, *_others,
     ):
-        """`is_backup_due()` отримує той самий київський `now`, що й решта задач.
+        """`is_backup_due()` отримує київський `now` і обидві позначки в правильному порядку.
 
-        Наївний або UTC-час тихо зсунув би поріг 7:00, а читання позначки не тим
-        ключем зробило б тижневу каденцію залежною від чужої задачі.
+        Наївний або UTC-час тихо зсунув би поріг 7:00, читання позначки не тим
+        ключем зробило б тижневу каденцію залежною від чужої задачі, а переплутані
+        між собою позначки успіху й спроби зламали б каденцію в обидва боки.
         """
         from services import scheduler
 
         mock_datetime.now.return_value = datetime(2026, 8, 22, 7, 30, tzinfo=backup.KYIV_TZ)
-        db.get_cron_last_run.return_value = None
+        marks = {"backup": "2026-08-15", "backup_attempt": "2026-08-16"}
+        db.get_cron_last_run.side_effect = lambda key: marks.get(key)
         mock_backup.is_backup_due.return_value = True
         mock_backup.send_weekly_backup.return_value = True
-        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
-        mock_backup.BACKUP_KEY = "backup"
+        self._stub_backup(mock_backup)
 
         scheduler._run_daily_tasks()
 
         mock_datetime.now.assert_called_once_with(scheduler.KYIV_TZ)
         self.assertIs(mock_backup.is_backup_due.call_args.args[0], mock_datetime.now.return_value)
-        self.assertEqual(mock_backup.is_backup_due.call_args.args[1], None)
-        db.get_cron_last_run.assert_any_call("backup")
+        self.assertEqual(mock_backup.is_backup_due.call_args.args[1], "2026-08-15")
+        self.assertEqual(mock_backup.is_backup_due.call_args.args[2], "2026-08-16")
 
     @patch("services.scheduler.rebook_promo")
     @patch("services.scheduler.birthday")
@@ -356,13 +399,14 @@ class SchedulerWiringTest(unittest.TestCase):
         mock_datetime.now.return_value = datetime(2026, 8, 19, 12, 0, tzinfo=backup.KYIV_TZ)
         db.get_cron_last_run.return_value = None
         mock_backup.is_backup_due.return_value = False
-        mock_backup.BACKUP_KEY = "backup"
+        self._stub_backup(mock_backup)
 
         scheduler._run_daily_tasks()
 
         mock_backup.send_weekly_backup.assert_not_called()
-        calls = [c.args for c in db.set_cron_last_run.call_args_list]
-        self.assertNotIn("backup", [key for key, *_ in calls])
+        keys = [key for key, *_ in (c.args for c in db.set_cron_last_run.call_args_list)]
+        self.assertNotIn("backup", keys)
+        self.assertNotIn("backup_attempt", keys)
 
     @patch("services.scheduler.rebook_promo")
     @patch("services.scheduler.birthday")
@@ -380,12 +424,49 @@ class SchedulerWiringTest(unittest.TestCase):
         db.get_cron_last_run.return_value = None
         mock_backup.is_backup_due.return_value = True
         mock_backup.send_weekly_backup.side_effect = RuntimeError("Supabase недоступний")
-        mock_backup.saturday_of_week.return_value = date(2026, 8, 22)
-        mock_backup.BACKUP_KEY = "backup"
+        self._stub_backup(mock_backup)
 
         with self.assertLogs("services.scheduler", "ERROR"):
             scheduler._run_daily_tasks()
 
+        calls = [c.args for c in db.set_cron_last_run.call_args_list]
+        self.assertNotIn(("backup", "2026-08-22"), calls)
+
+    @patch("services.scheduler.rebook_promo")
+    @patch("services.scheduler.birthday")
+    @patch("services.scheduler.vaccine_sync")
+    @patch("services.scheduler.altegio_reconcile")
+    @patch("services.scheduler.backup")
+    @patch("services.scheduler.db")
+    @patch("services.scheduler.datetime")
+    def test_attempt_is_marked_before_run_with_today(
+        self, mock_datetime, db, mock_backup, *_others,
+    ):
+        """Позначка спроби ставиться ДО дампа і сьогоднішньою датою.
+
+        Порядок принциповий: якби позначка йшла після, то падіння дампа (виняток
+        або таймаут Supabase) лишило б добу непозначеною, і наступний тик через
+        10 хвилин почав би все спочатку. Дата — сьогоднішня, а не суботи тижня,
+        інакше неділя-підхват не відрізнялась би від суботньої спроби.
+        """
+        from services import scheduler
+
+        mock_datetime.now.return_value = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)  # неділя
+        db.get_cron_last_run.return_value = None
+        mock_backup.is_backup_due.return_value = True
+        self._stub_backup(mock_backup)
+
+        marks_before_send = []
+
+        def send_and_snapshot_marks():
+            marks_before_send.extend(c.args for c in db.set_cron_last_run.call_args_list)
+            return False  # збій: позначка успіху не стає, а спроба вже зафіксована
+
+        mock_backup.send_weekly_backup.side_effect = send_and_snapshot_marks
+
+        scheduler._run_daily_tasks()
+
+        self.assertIn(("backup_attempt", "2026-08-23"), marks_before_send)
         calls = [c.args for c in db.set_cron_last_run.call_args_list]
         self.assertNotIn(("backup", "2026-08-22"), calls)
 
