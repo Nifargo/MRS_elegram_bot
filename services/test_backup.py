@@ -143,7 +143,9 @@ class BackupDueTest(unittest.TestCase):
 
     def test_not_due_twice_in_same_week(self):
         now = datetime(2026, 8, 22, 9, 0, tzinfo=backup.KYIV_TZ)
-        self.assertFalse(backup.is_backup_due(now, "2026-08-22", "2026-08-22"))
+        # last_attempt=None навмисно: інакше рішення обірветься на позначці
+        # спроби і тижневої позначки взагалі не перевірить.
+        self.assertFalse(backup.is_backup_due(now, "2026-08-22", None))
 
     def test_sunday_catches_up_missed_saturday(self):
         now = datetime(2026, 8, 23, 8, 0, tzinfo=backup.KYIV_TZ)  # неділя
