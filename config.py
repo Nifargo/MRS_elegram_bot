@@ -39,6 +39,11 @@ ALTEGIO_WEBHOOK_SECRET = os.getenv("ALTEGIO_WEBHOOK_SECRET")
 ADMIN_GROUP_CHAT_ID = int(os.getenv("ADMIN_GROUP_CHAT_ID")) if os.getenv("ADMIN_GROUP_CHAT_ID") else None
 ADMIN_TOPIC_ID = int(os.getenv("ADMIN_TOPIC_ID")) if os.getenv("ADMIN_TOPIC_ID") else None
 
+# Куди слати тижневий бекап Supabase. Особистий чат власника, свідомо окремо
+# від ADMIN_GROUP_CHAT_ID: дамп містить імена й телефони клієнтів і не має
+# шансу опинитись у спільній групі з персоналом.
+BACKUP_CHAT_ID = int(os.getenv("BACKUP_CHAT_ID")) if os.getenv("BACKUP_CHAT_ID") else None
+
 # Номер салону для кнопки "🆘 Допомога" (Фаза 9)
 HELP_PHONE = "+380960080482"
 

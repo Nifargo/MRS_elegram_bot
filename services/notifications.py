@@ -59,6 +59,34 @@ def send_telegram_message(
         return False
 
 
+def send_telegram_document(
+    chat_id: int, filename: str, content: bytes, caption: str | None = None,
+) -> bool:
+    """Надіслати файл напряму через Bot API. Повертає True при успіху.
+
+    `content` — саме bytes, а не відкритий файл: Session-level ретраї на
+    502/503/504 (проксі PythonAnywhere) повторюють запит, а вичерпаний
+    файловий об'єкт при повторі віддав би порожнє тіло.
+    """
+    data: dict = {"chat_id": chat_id}
+    if caption is not None:
+        data["caption"] = caption
+    try:
+        response = _session.post(
+            f"{_API_URL}/sendDocument",
+            data=data,
+            files={"document": (filename, content, "application/json")},
+            timeout=60,  # більше за 15s у sendMessage: тут вантажиться файл
+        )
+        if not response.ok:
+            logger.error(f"Telegram sendDocument {chat_id}: HTTP {response.status_code} {response.text[:200]}")
+            return False
+        return True
+    except requests.RequestException as e:
+        logger.error(f"Telegram sendDocument {chat_id}: {e}")
+        return False
+
+
 def notify_admins(text: str) -> bool:
     """Надіслати повідомлення в адмін-топік групи. True, якщо дійшло."""
     if not ADMIN_GROUP_CHAT_ID:
