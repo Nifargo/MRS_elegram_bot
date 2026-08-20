@@ -57,6 +57,19 @@ class GroqClientTest(unittest.TestCase):
                 asyncio.run(groq_client.get_response(1, "привіт", ""))
         self.assertEqual(groq_client.chat_histories[1], [])
 
+    def test_empty_answer_does_not_poison_history(self):
+        # content=None у історії пішов би в кожен наступний запит цього клієнта
+        # до перезапуску процесу.
+        for completion in (_completion(None), mock.Mock(choices=[])):
+            with self.subTest(completion=completion):
+                groq_client.chat_histories.clear()
+                with mock.patch.object(groq_client.client.chat.completions, "create",
+                                       return_value=completion):
+                    with self.assertLogs("groq_client", level="ERROR"):
+                        reply = asyncio.run(groq_client.get_response(1, "привіт", ""))
+                self.assertIn("помилка", reply.lower())
+                self.assertEqual(groq_client.chat_histories[1], [])
+
     def test_other_error_returns_apology(self):
         user_message = "Мене звати Андрій, телефон 0671112233"
         with mock.patch.object(groq_client.client.chat.completions, "create",

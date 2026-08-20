@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 
-from services import ai_context
+from services import ai_context, ai_guard
 from services.altegio import AltegioError
 
 SERVICES = [
@@ -10,6 +10,13 @@ SERVICES = [
     {"id": 3, "title": "Інші породи до 5 кг", "price_min": 900, "price_max": 900, "category_id": 10},
     {"id": 4, "title": "Інші породи від 10 кг", "price_min": 2400, "price_max": 2400, "category_id": 10},
 ]
+# Живий каталог: 104 назви з 327 повторюються між категоріями, бо категорія
+# кодує рівень грумера, а назва — лише породу з вагою.
+SAME_TITLE_TWO_LEVELS = [
+    {"id": 1, "title": "Йоркширський тер'єр до 4 кг", "price_min": 1300, "price_max": 1300, "category_id": 10},
+    {"id": 5, "title": "Йоркширський тер'єр до 4 кг", "price_min": 1150, "price_max": 1150, "category_id": 20},
+]
+CATEGORIES = {10: "Комплексний догляд (Топ грумер)", 20: "Комплексний догляд (Грумер)"}
 BRANCHES = [
     {"name": "Замарстинівська", "address": "вул. Замарстинівська, 1"},
     {"name": "Тернопільська", "address": None},
@@ -92,6 +99,31 @@ class BuildContextTest(unittest.TestCase):
         self.assertEqual(ctx.text.count(ai_context.BLOCK_MARK), 4)
 
 
+    def test_same_title_in_two_categories_is_distinguishable(self):
+        ctx = ai_context.build_context([pet()], SAME_TITLE_TWO_LEVELS, BRANCHES, CATEGORIES)
+        self.assertIn("Комплексний догляд (Топ грумер)", ctx.text)
+        self.assertIn("Комплексний догляд (Грумер)", ctx.text)
+        # Дві різні ціни за однією назвою — рядки мусять відрізнятись, інакше
+        # моделі нічим їх розрізнити, а перевірка сум тут безсила: обидві реальні.
+        self.assertEqual(len(set(ctx.price_lines)), 2)
+
+    def test_every_amount_in_text_is_declared(self):
+        # Round-trip: усе, що модель бачить у блоці, перевірка мусить визнавати
+        # своїм. Інакше або відхиляється правильна відповідь, або (гірше)
+        # пропускається вигадана сума в тому самому форматі.
+        ranged = [dict(s, price_max=s["price_min"] + 500) for s in SERVICES]
+        cases = {
+            "діапазон + улюбленець": (ranged, [pet()]),
+            "діапазон без улюбленця": (ranged, []),
+            "фіксована ціна": (SERVICES, [pet()]),
+            "однакові назви": (SAME_TITLE_TWO_LEVELS, [pet()]),
+        }
+        for label, (services, pets) in cases.items():
+            with self.subTest(label):
+                ctx = ai_context.build_context(pets, services, BRANCHES, CATEGORIES)
+                self.assertLessEqual(ai_guard.amounts_in(ctx.text), set(ctx.amounts))
+
+
 class CatalogCacheTest(unittest.TestCase):
     def setUp(self):
         ai_context.reset_cache()
@@ -123,6 +155,14 @@ class CatalogCacheTest(unittest.TestCase):
     def test_no_cache_and_failure_gives_none(self):
         with mock.patch.object(ai_context.altegio, "get_services", side_effect=AltegioError("502")):
             self.assertIsNone(ai_context.catalog("783219"))
+
+    def test_empty_catalog_not_cached(self):
+        # Порожній каталог — або збій Altegio, або зламана конфігурація. Осісти
+        # в кеші на годину означало б годину відповідей «телефонуйте в салон».
+        with mock.patch.object(ai_context.altegio, "get_services", return_value=[]) as fetch:
+            ai_context.catalog("783219")
+            ai_context.catalog("783219")
+        self.assertEqual(fetch.call_count, 2)
 
 
 class BranchesTest(unittest.TestCase):
@@ -169,9 +209,11 @@ class ForUserTest(unittest.TestCase):
         with mock.patch.object(ai_context.db, "get_client_by_tg_id", return_value=CLIENT), \
              mock.patch.object(ai_context.db, "get_pets_by_client", return_value=[pet()]), \
              mock.patch.object(ai_context, "catalog", return_value=SERVICES), \
+             mock.patch.object(ai_context, "categories", return_value=CATEGORIES), \
              mock.patch.object(ai_context, "branches", return_value=BRANCHES):
             ctx = ai_context.for_user(651807767)
         self.assertIn("1300 грн", ctx.text)
+        self.assertIn("Комплексний догляд (Топ грумер)", ctx.text)
 
     def test_client_resolved_only_by_telegram_user_id(self):
         # Ізоляція клієнтів: єдине джерело — tg_user_id від Telegram, жодного
@@ -181,16 +223,29 @@ class ForUserTest(unittest.TestCase):
              mock.patch.object(ai_context.db, "get_pets_by_client",
                                return_value=[pet()]) as pets_lookup, \
              mock.patch.object(ai_context, "catalog", return_value=SERVICES), \
+             mock.patch.object(ai_context, "categories", return_value=CATEGORIES), \
              mock.patch.object(ai_context, "branches", return_value=BRANCHES):
             ai_context.for_user(651807767)
         lookup.assert_called_once_with(651807767)
         pets_lookup.assert_called_once_with(CLIENT["id"])
+
+    def test_categories_not_fetched_without_pets(self):
+        # Без улюбленців персональних рядків прайсу нема, тож і запит категорій
+        # у Altegio теж — незареєстрований користувач бачить лише діапазон.
+        with mock.patch.object(ai_context.db, "get_client_by_tg_id", return_value=CLIENT), \
+             mock.patch.object(ai_context.db, "get_pets_by_client", return_value=[]), \
+             mock.patch.object(ai_context, "catalog", return_value=SERVICES), \
+             mock.patch.object(ai_context, "categories") as categories_mock, \
+             mock.patch.object(ai_context, "branches", return_value=BRANCHES):
+            ai_context.for_user(651807767)
+        categories_mock.assert_not_called()
 
     def test_supabase_failure_falls_back_to_general_context(self):
         with mock.patch.object(ai_context, "ALTEGIO_LOCATIONS", REFERENCE_LOCATION), \
              mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("Supabase недоступний")), \
              mock.patch.object(ai_context, "catalog", return_value=SERVICES) as catalog_mock, \
+             mock.patch.object(ai_context, "categories", return_value={}), \
              mock.patch.object(ai_context, "branches", return_value=BRANCHES), \
              self.assertLogs(ai_context.logger, "WARNING") as logs:
             ctx = ai_context.for_user(651807767)
@@ -204,6 +259,7 @@ class ForUserTest(unittest.TestCase):
              mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("boom")), \
              mock.patch.object(ai_context, "catalog", side_effect=Exception("boom")), \
+             mock.patch.object(ai_context, "categories", side_effect=Exception("boom")), \
              mock.patch.object(ai_context, "branches", side_effect=Exception("boom")), \
              self.assertLogs(ai_context.logger, "ERROR") as logs:
             self.assertEqual(ai_context.for_user(1), ai_context.EMPTY)

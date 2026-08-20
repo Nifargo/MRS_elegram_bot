@@ -33,6 +33,19 @@ class AmountsTest(unittest.TestCase):
     def test_number_without_currency_ignored(self):
         self.assertEqual(ai_guard.unknown_amounts("Стрижка триває 90 хвилин", ALLOWED), set())
 
+    def test_both_ends_of_range_detected(self):
+        # Формат booking.format_price для послуги з price_min != price_max —
+        # домінантний у блоці даних, тож модель перевикористовує саме його.
+        for text in ("900–1400 грн", "900-1400 грн", "900 – 1400 грн", "900—1400 грн"):
+            with self.subTest(text=text):
+                self.assertEqual(ai_guard.amounts_in(text), {900, 1400})
+
+    def test_invented_lower_bound_of_range_detected(self):
+        self.assertEqual(ai_guard.unknown_amounts("Стрижка — 300–1300 грн", ALLOWED), {300})
+
+    def test_weight_range_in_title_not_read_as_money(self):
+        self.assertEqual(ai_guard.amounts_in("Йорк 2-4 кг — 1300 грн"), {1300})
+
 
 class LinksTest(unittest.TestCase):
     def test_widget_link_kept(self):
@@ -58,6 +71,12 @@ class LinksTest(unittest.TestCase):
         poisoned = f"{ai_guard.ALTEGIO_BOOKING_WIDGET_URL}https://evil.com/steal"
         cleaned = ai_guard.strip_foreign_links(f"Запис: {poisoned}")
         self.assertNotIn("evil.com", cleaned)
+
+    def test_uppercase_scheme_removed(self):
+        # Telegram робить адресу клікабельною незалежно від регістру схеми.
+        for text in ("Ось HTTPS://evil.example/x тут", "Ось Http://evil.example тут"):
+            with self.subTest(text=text):
+                self.assertNotIn("evil.example", ai_guard.strip_foreign_links(text))
 
     def test_newlines_preserved_without_links(self):
         text = "Прайс:\n- Комплекс 1300 грн\n- Ванна 900 грн"

@@ -23,16 +23,22 @@ _last_trip_alert: float | None = None
 _quota_affected: set[int] = set()
 _quota_error: str = ""
 
+_NUM = r"\d[\d\s\u00a0.,]*"
+_CURRENCY = r"(?:грн|гривн\w*|гривен\w*|₴|uah)"
+
+# Гілка діапазону мусить стояти першою: інакше з «900–1400 грн» видно лише
+# 1400, а нижня межа — рівно те місце, де модель може занизити ціну втричі.
+# Валюта після другого числа обов'язкова, тому «Йорк 2-4 кг» грошима не стане.
 _AMOUNT_RE = re.compile(
-    r"(?:"
-    r"(\d[\d\s\u00a0.,]*)\s*(?:грн|гривн\w*|гривен\w*|₴|uah)"
-    r"|"
-    r"₴\s*(\d[\d\s\u00a0.,]*)"
-    r")",
+    rf"(?:"
+    rf"({_NUM}?)\s*[-–—]\s*({_NUM})\s*{_CURRENCY}"
+    rf"|({_NUM})\s*{_CURRENCY}"
+    rf"|₴\s*({_NUM})"
+    rf")",
     re.IGNORECASE,
 )
-_URL_RE = re.compile(r"https?://\S+")
-_ALLOWED_HOSTS = {urlparse(ALTEGIO_BOOKING_WIDGET_URL).netloc}
+_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+_ALLOWED_HOSTS = {urlparse(ALTEGIO_BOOKING_WIDGET_URL).netloc.lower()}
 
 AI_UNAVAILABLE_TEXT = (
     "Зараз не можу відповісти на це питання 🙁\n"
@@ -47,7 +53,7 @@ def _is_allowed_url(url: str) -> bool:
     нашого віджета, але веде клієнта в інше місце.
     """
     parsed = urlparse(url)
-    if parsed.netloc not in _ALLOWED_HOSTS:
+    if parsed.netloc.lower() not in _ALLOWED_HOSTS:
         return False
     rest = url[url.index(parsed.netloc) + len(parsed.netloc):]
     return "://" not in rest
@@ -59,16 +65,17 @@ def _keep_allowed(match: re.Match) -> str:
 
 def amounts_in(text: str) -> set[int]:
     """Усі суми в гривнях, зведені до цілих. «1 300 грн» і «1300грн» дають те саме.
+    Діапазон «900–1400 грн» дає обидві межі.
 
     Кома й крапка трактуються як роздільник тисяч (не десятковий), тож
     «1300,50 грн» дасть 130050. Ціни салону — цілі, тому це свідоме спрощення.
     """
     found = set()
     for match in _AMOUNT_RE.finditer(text):
-        raw = match.group(1) or match.group(2)
-        digits = re.sub(r"\D", "", raw)
-        if digits:
-            found.add(int(digits))
+        for raw in match.groups():
+            digits = re.sub(r"\D", "", raw or "")
+            if digits:
+                found.add(int(digits))
     return found
 
 

@@ -47,9 +47,14 @@ def _clean(value) -> str:
     return flat.replace(BLOCK_MARK, "").strip()[:MAX_VALUE_LEN]
 
 
+def _slim(service: dict) -> dict:
+    """Той самий зріз, що у флоу запису, плюс категорія — вона потрібна в рядку прайсу."""
+    return {**booking.slim_service(service), "category_id": service.get("category_id")}
+
+
 def _matched_services(pet: dict, services: list[dict]) -> list[dict]:
     """До 6 послуг під улюбленця. Порода не збіглась — падаємо на «Інші породи» за вагою."""
-    slim = [booking.slim_service(s) for s in services]
+    slim = [_slim(s) for s in services]
     weight = pet.get("weight")
     matched = booking.match_services_by_breed(pet.get("breed") or "", slim, weight)
     if matched:
@@ -59,7 +64,17 @@ def _matched_services(pet: dict, services: list[dict]) -> list[dict]:
     return booking.match_services_by_breed(GENERIC_BREED_KEY, slim, weight)
 
 
-def build_context(pets: list[dict], services: list[dict] | None, branches: list[dict]) -> AiContext:
+def _price_row(service: dict, categories: dict[int, str] | None) -> str:
+    """Рядок прайсу з категорією: без неї моделі дістаються однакові назви з
+    різними цінами (у флоу запису категорію обирає клієнт, тут — нікому)."""
+    title = _clean(service["title"])
+    category = _clean((categories or {}).get(service.get("category_id"), ""))
+    label = f"{category}: {title}" if category else title
+    return f"- {label} — {booking.format_price(service)}"
+
+
+def build_context(pets: list[dict], services: list[dict] | None, branches: list[dict],
+                  categories: dict[int, str] | None = None) -> AiContext:
     """Блок контексту. Чиста функція: без мережі, без БД."""
     amounts: set[int] = set()
     price_lines: list[str] = []
@@ -79,8 +94,7 @@ def build_context(pets: list[dict], services: list[dict] | None, branches: list[
             head = f"Улюбленець {index}" + (f", вага {weight} кг" if weight else "")
             lines.append(f"{head}. Послуги під нього:")
             for service in _matched_services(pet, services):
-                price = booking.format_price(service)
-                row = f"- {_clean(service['title'])} — {price}"
+                row = _price_row(service, categories)
                 lines.append(row)
                 price_lines.append(row)
                 amounts.update(_amounts_of(service))
@@ -107,12 +121,14 @@ CATALOG_TTL_SECONDS = 3600
 BRANCH_TTL_SECONDS = 86400  # адреси філій не змінюються роками
 
 _catalog_cache: dict[str, tuple[float, list[dict]]] = {}
+_category_cache: dict[str, tuple[float, list[dict]]] = {}
 _branch_cache: dict[str, tuple[float, dict]] = {}
 
 
 def reset_cache() -> None:
     """Для тестів."""
     _catalog_cache.clear()
+    _category_cache.clear()
     _branch_cache.clear()
 
 
@@ -130,7 +146,8 @@ def _cached(store: dict, key: str, ttl: int, fetch):
             return entry[1]
         logger.warning(f"Altegio недоступний ({e}) — кешу для {key} немає")
         return None
-    store[key] = (now, value)
+    if value:  # порожнє — або збій Altegio, або зламана конфігурація: не кешуємо
+        store[key] = (now, value)
     return value
 
 
@@ -138,6 +155,14 @@ def catalog(company_id: str) -> list[dict] | None:
     """Послуги філії, доступні для онлайн-запису."""
     return _cached(_catalog_cache, company_id, CATALOG_TTL_SECONDS,
                    lambda: altegio.get_services(company_id))
+
+
+def categories(company_id: str) -> dict[int, str]:
+    """id категорії → назва. Категорія кодує тип послуги × рівень грумера, тож
+    без неї в живому каталозі 104 назви з 327 повторюються з різними цінами."""
+    found = _cached(_category_cache, company_id, CATALOG_TTL_SECONDS,
+                    lambda: altegio.get_service_categories(company_id))
+    return {c["id"]: c["title"] for c in (found or [])}
 
 
 def branches() -> list[dict]:
@@ -185,7 +210,8 @@ def for_user(tg_user_id: int) -> AiContext:
 
         company_id = (client or {}).get("altegio_company_id") or _reference_company_id()
         services = catalog(company_id) if company_id else None
-        return build_context(pets, services, branches())
+        category_names = categories(company_id) if company_id and pets else {}
+        return build_context(pets, services, branches(), category_names)
     except Exception as e:
         logger.error(f"Не вдалось скласти контекст для {tg_user_id}: {e}", exc_info=True)
         return EMPTY

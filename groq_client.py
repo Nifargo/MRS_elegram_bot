@@ -14,6 +14,8 @@ chat_histories = {}
 
 HISTORY_LIMIT = 10  # останніх повідомлень (≈5 обмінів)
 
+APOLOGY = "Вибачте, сталася помилка. Спробуйте ще раз або зверніться до адміністратора."
+
 
 async def get_response(user_id: int, message: str, context_block: str = "") -> str:
     """Відповідь Groq. RateLimitError (429) пробрасується назовні — викликач
@@ -41,9 +43,15 @@ async def get_response(user_id: int, message: str, context_block: str = "") -> s
     except Exception as e:
         logger.error(f"Помилка Groq API: {type(e).__name__}: {e}", exc_info=True)
         history.pop()
-        return "Вибачте, сталася помилка. Спробуйте ще раз або зверніться до адміністратора."
+        return APOLOGY
 
-    assistant_message = response.choices[0].message.content
+    choice = response.choices[0] if response.choices else None
+    assistant_message = (choice.message.content or "") if choice else ""
+    if not assistant_message:
+        logger.error("Groq повернув відповідь без тексту")
+        history.pop()  # порожня відповідь у історії псувала б усі наступні запити
+        return APOLOGY
+
     history.append({"role": "assistant", "content": assistant_message})
     chat_histories[user_id] = history[-HISTORY_LIMIT:]
     return assistant_message
