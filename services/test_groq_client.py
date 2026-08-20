@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import unittest
 from unittest import mock
 
@@ -20,7 +19,6 @@ def _rate_limit_error() -> RateLimitError:
 class GroqClientTest(unittest.TestCase):
     def setUp(self):
         groq_client.chat_histories.clear()
-        logging.getLogger("groq_client").setLevel(logging.CRITICAL)
 
     def test_context_block_goes_into_system_message(self):
         with mock.patch.object(groq_client.client.chat.completions, "create",
@@ -37,6 +35,15 @@ class GroqClientTest(unittest.TestCase):
                 asyncio.run(groq_client.get_response(1, f"питання {i}", ""))
         self.assertLessEqual(len(groq_client.chat_histories[1]), groq_client.HISTORY_LIMIT)
 
+    def test_history_window_starts_with_user(self):
+        with mock.patch.object(groq_client.client.chat.completions, "create",
+                               return_value=_completion("ok")) as create:
+            for i in range(6):
+                asyncio.run(groq_client.get_response(1, f"питання {i}", ""))
+        messages = create.call_args.kwargs["messages"]
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertEqual(messages[1]["role"], "user")
+
     def test_rate_limit_propagates(self):
         with mock.patch.object(groq_client.client.chat.completions, "create",
                                side_effect=_rate_limit_error()):
@@ -51,10 +58,18 @@ class GroqClientTest(unittest.TestCase):
         self.assertEqual(groq_client.chat_histories[1], [])
 
     def test_other_error_returns_apology(self):
+        user_message = "Мене звати Андрій, телефон 0671112233"
         with mock.patch.object(groq_client.client.chat.completions, "create",
                                side_effect=RuntimeError("boom")):
-            reply = asyncio.run(groq_client.get_response(1, "привіт", ""))
+            with self.assertLogs("groq_client", level="ERROR") as logs:
+                reply = asyncio.run(groq_client.get_response(1, user_message, ""))
         self.assertIn("помилка", reply.lower())
+        self.assertEqual(groq_client.chat_histories[1], [])
+        log_text = "\n".join(logs.output)
+        self.assertIn("RuntimeError", log_text)
+        self.assertNotIn(user_message, log_text)
+        self.assertNotIn("Андрій", log_text)
+        self.assertNotIn("0671112233", log_text)
 
 
 if __name__ == "__main__":

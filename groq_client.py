@@ -22,7 +22,11 @@ async def get_response(user_id: int, message: str, context_block: str = "") -> s
     history.append({"role": "user", "content": message})
 
     system = f"{SYSTEM_PROMPT}\n\n{context_block}" if context_block else SYSTEM_PROMPT
-    messages = [{"role": "system", "content": system}] + history[-HISTORY_LIMIT:]
+    window = history[-HISTORY_LIMIT:]
+    if window and window[0]["role"] == "assistant":
+        # без свого user-питання відповідь лише збиває модель з пантелику
+        window = window[1:]
+    messages = [{"role": "system", "content": system}] + window
 
     try:
         response = client.chat.completions.create(
