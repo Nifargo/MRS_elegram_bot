@@ -14,6 +14,12 @@ BRANCHES = [
     {"name": "Замарстинівська", "address": "вул. Замарстинівська, 1"},
     {"name": "Тернопільська", "address": None},
 ]
+TEST_LOCATIONS = {
+    "Замарстинівська": "783219",
+    "Тернопільська": "748415",
+    "Володимира Великого": "1364451",
+}
+REFERENCE_LOCATION = {"Тестова": "1"}
 
 
 def pet(**kwargs) -> dict:
@@ -122,6 +128,13 @@ class CatalogCacheTest(unittest.TestCase):
 class BranchesTest(unittest.TestCase):
     def setUp(self):
         ai_context.reset_cache()
+        self.locations_patcher = mock.patch.object(
+            ai_context, "ALTEGIO_LOCATIONS", TEST_LOCATIONS,
+        )
+        self.locations_patcher.start()
+
+    def tearDown(self):
+        self.locations_patcher.stop()
 
     def test_title_used_when_address_empty(self):
         # Дві філії з трьох мають порожнє поле адреси, вулиця живе в назві.
@@ -174,16 +187,19 @@ class ForUserTest(unittest.TestCase):
         pets_lookup.assert_called_once_with(CLIENT["id"])
 
     def test_supabase_failure_falls_back_to_general_context(self):
-        with mock.patch.object(ai_context.db, "get_client_by_tg_id",
+        with mock.patch.object(ai_context, "ALTEGIO_LOCATIONS", REFERENCE_LOCATION), \
+             mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("Supabase недоступний")), \
-             mock.patch.object(ai_context, "catalog", return_value=SERVICES), \
+             mock.patch.object(ai_context, "catalog", return_value=SERVICES) as catalog_mock, \
              mock.patch.object(ai_context, "branches", return_value=BRANCHES):
             ctx = ai_context.for_user(651807767)
+        catalog_mock.assert_called_once_with("1")
         self.assertIn("Орієнтовні ціни", ctx.text)
         self.assertEqual(ctx.price_lines, [])
 
     def test_any_failure_never_raises(self):
-        with mock.patch.object(ai_context.db, "get_client_by_tg_id",
+        with mock.patch.object(ai_context, "ALTEGIO_LOCATIONS", REFERENCE_LOCATION), \
+             mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("boom")), \
              mock.patch.object(ai_context, "catalog", side_effect=Exception("boom")), \
              mock.patch.object(ai_context, "branches", side_effect=Exception("boom")):
