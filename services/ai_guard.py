@@ -5,11 +5,23 @@
 хто його викликає.
 """
 import re
+import time
 from urllib.parse import urlparse
 
 from config import ALTEGIO_BOOKING_WIDGET_URL, HELP_PHONE
 
 MAX_INPUT_CHARS = 1000
+
+AI_RATE_LIMIT = 15            # повідомлень на годину від одного tg_user_id
+RATE_WINDOW_SECONDS = 3600
+GUARD_ALERT_THRESHOLD = 5     # відхилень за годину, після яких сповіщаємо адмінів
+GUARD_ALERT_WINDOW_SECONDS = 3600
+
+_hits: dict[int, list[float]] = {}
+_trips: list[float] = []
+_last_trip_alert: float | None = None
+_quota_affected: set[int] = set()
+_quota_error: str = ""
 
 _AMOUNT_RE = re.compile(
     r"(?:"
@@ -82,3 +94,64 @@ def price_fallback(price_lines: list[str]) -> str:
     return ("Щоб не помилитись із сумою, ось актуальні ціни:\n"
             + "\n".join(price_lines)
             + f"\n\nОстаточну суму підтвердить майстер при огляді. Питання — {HELP_PHONE}")
+
+
+def reset_state() -> None:
+    """Для тестів."""
+    global _last_trip_alert, _quota_error
+    _hits.clear()
+    _trips.clear()
+    _last_trip_alert = None
+    _quota_affected.clear()
+    _quota_error = ""
+
+
+def allow_message(tg_user_id: int, now: float | None = None) -> bool:
+    """False — особистий ліміт вичерпано, Groq викликати не треба.
+
+    Захищає спільну квоту безкоштовного Groq: без цього один активний
+    користувач здатен вичерпати її для решти клієнтів.
+    """
+    now = time.monotonic() if now is None else now
+    hits = [t for t in _hits.get(tg_user_id, []) if now - t < RATE_WINDOW_SECONDS]
+    if len(hits) >= AI_RATE_LIMIT:
+        _hits[tg_user_id] = hits
+        return False
+    hits.append(now)
+    _hits[tg_user_id] = hits
+    return True
+
+
+def record_guard_trip(now: float | None = None) -> bool:
+    """Порахувати відхилену відповідь. True — час сповістити адмінів.
+
+    Ловить сценарій «Groq змінив модель або промпт поплив, бот тихо перейшов у
+    режим вічного фолбеку»: така поломка дає стабільний потік відхилень, тож
+    лічильник у пам'яті процесу її помітить навіть після перезапуску.
+    """
+    global _last_trip_alert
+    now = time.monotonic() if now is None else now
+    _trips[:] = [t for t in _trips if now - t < GUARD_ALERT_WINDOW_SECONDS] + [now]
+    if len(_trips) < GUARD_ALERT_THRESHOLD:
+        return False
+    if _last_trip_alert is not None and now - _last_trip_alert < GUARD_ALERT_WINDOW_SECONDS:
+        return False
+    _last_trip_alert = now
+    return True
+
+
+def record_quota_block(tg_user_id: int, error_text: str) -> None:
+    """Запам'ятати клієнта, який наткнувся на 429, для дайджесту о 18:30."""
+    global _quota_error
+    _quota_affected.add(tg_user_id)
+    _quota_error = error_text[:200]
+
+
+def quota_report() -> tuple[set[int], str]:
+    return set(_quota_affected), _quota_error
+
+
+def clear_quota_report() -> None:
+    global _quota_error
+    _quota_affected.clear()
+    _quota_error = ""
