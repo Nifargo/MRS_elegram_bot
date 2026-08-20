@@ -5,13 +5,13 @@
 "що вже пора відправити" з таблиці notifications.
 """
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, time as dt_time, timezone
 
 from config import ALTEGIO_BOOKING_WIDGET_URL
 from handlers.common import parse_iso_datetime
 from db import client as db
 from db.client import supabase
-from services import altegio_reconcile, backup, birthday, notifications, rebook_promo, vaccine_sync
+from services import ai_guard, altegio_reconcile, backup, birthday, notifications, rebook_promo, vaccine_sync
 from services.notifications import KYIV_TZ
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,55 @@ BIRTHDAY_KEY = "birthday"
 
 REBOOK_PROMO_HOUR = 9  # Київ; "завтра є місце" має дійти клієнту заздалегідь, до відкриття
 REBOOK_PROMO_KEY = "rebook_promo"
+
+# Київ; одразу за сповіщенням про перервані записи о 18:00 (BOOKING_INCOMPLETE_HOUR):
+# адміни обробляють обидва списки за один раз і ще в робочий час. Поріг із
+# хвилинами, тому порівнюється now.time(), а не звичний для решти задач now.hour.
+GROQ_QUOTA_DIGEST_TIME = dt_time(18, 30)
+GROQ_QUOTA_KEY = "groq_quota_alert"
+
+
+def is_quota_digest_due(now, last_run: str | None) -> bool:
+    """Чи пора слати дайджест: після 18:30 Київ і сьогодні його ще не було."""
+    if now.time() < GROQ_QUOTA_DIGEST_TIME:
+        return False
+    return last_run != now.date().isoformat()
+
+
+def send_quota_digest() -> bool:
+    """Список клієнтів, які сьогодні наткнулись на вичерпану квоту Groq.
+
+    Той самий адмін-топік і та сама форма «ім'я + телефон», що вже
+    використовують form_incomplete/booking_incomplete з приводом
+    «зателефонуйте клієнту». Синхронний notify_admins, бо дайджест іде з
+    cron-шляху — він навмисно працює повз event loop.
+    """
+    user_ids, error_text = ai_guard.quota_report()
+    if not user_ids:
+        return False
+
+    lines = []
+    for user_id in sorted(user_ids):
+        try:
+            client = db.get_client_by_tg_id(user_id)
+        except Exception as e:
+            logger.warning(f"Не вдалось знайти клієнта {user_id} для дайджесту квоти: {e}")
+            client = None
+        if client:
+            lines.append(f"• {client.get('name') or '—'} — {client.get('phone') or '—'}")
+        else:
+            lines.append(f"• tg_user_id {user_id} (немає в базі)")
+
+    text = ("⚠️ Квота Groq вичерпана — AI-чат сьогодні замість відповідей давав "
+            f"телефон салону.\nКлієнтів торкнулось: {len(user_ids)}\n"
+            + "\n".join(lines))
+    if error_text:
+        text += f"\n\nGroq: {error_text}"
+
+    if not notifications.notify_admins(text):
+        return False  # позначку не ставимо — спробуємо на наступному тику cron
+    ai_guard.clear_quota_report()
+    return True
 
 
 def get_due_notifications() -> list[dict]:
@@ -211,6 +260,13 @@ def _run_daily_tasks() -> None:
             success = False
         if success:
             db.set_cron_last_run(REBOOK_PROMO_KEY, today)
+
+    if is_quota_digest_due(now, db.get_cron_last_run(GROQ_QUOTA_KEY)):
+        try:
+            if send_quota_digest():
+                db.set_cron_last_run(GROQ_QUOTA_KEY, today)
+        except Exception as e:
+            logger.error(f"❌ Помилка дайджесту квоти Groq: {e}", exc_info=True)
 
     # Єдина задача не з добовою, а з тижневою каденцією, тому власне рішення
     # «чи пора» (субота/неділя + година, обидві позначки) цілком живе в
