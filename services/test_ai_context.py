@@ -135,11 +135,13 @@ class BuildContextTest(unittest.TestCase):
         self.assertIn("ціна за запитом", ctx.text)
         self.assertEqual(ctx.amounts, frozenset())
 
-    def test_duplicate_titles_collapsed_without_categories(self):
-        # Запит категорій не вдався — краще один рядок на назву, ніж два
-        # однакові з різними цінами, які моделі нічим розрізнити.
+    def test_duplicate_titles_merged_into_range(self):
+        # Запит категорій не вдався — один рядок із діапазоном замість двох
+        # однакових назв із різними цінами, які моделі нічим розрізнити.
         ctx = ai_context.build_context([pet()], SAME_TITLE_TWO_LEVELS, BRANCHES, None)
         self.assertEqual(len(ctx.price_lines), 1)
+        self.assertIn("1150–1300 грн", ctx.price_lines[0])
+        self.assertEqual(ctx.amounts, frozenset({1150, 1300}))
 
 
 class CatalogCacheTest(unittest.TestCase):
@@ -160,6 +162,21 @@ class CatalogCacheTest(unittest.TestCase):
             ai_context.catalog("783219")
             ai_context.catalog("783219")
         self.assertEqual(fetch.call_count, 2)
+
+    def test_empty_answer_does_not_evict_good_data(self):
+        # Порожня відповідь гейтить повторний запит, але останні добрі дані ще
+        # знадобляться, якщо наступним прийде 502.
+        with mock.patch.object(ai_context.time, "monotonic",
+                               side_effect=[1000.0,
+                                            1000.0 + ai_context.CATALOG_TTL_SECONDS + 1,
+                                            1000.0 + ai_context.CATALOG_TTL_SECONDS + 2]):
+            with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES):
+                ai_context.catalog("783219")
+            with mock.patch.object(ai_context.altegio, "get_services", return_value=[]):
+                self.assertEqual(ai_context.catalog("783219"), SERVICES)
+            with mock.patch.object(ai_context.altegio, "get_services",
+                                   side_effect=AltegioError("502")):
+                self.assertEqual(ai_context.catalog("783219"), SERVICES)
 
     def test_stale_cache_served_when_altegio_fails(self):
         with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES), \

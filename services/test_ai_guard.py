@@ -46,6 +46,28 @@ class AmountsTest(unittest.TestCase):
     def test_invented_lower_bound_without_dash_detected(self):
         self.assertEqual(ai_guard.unknown_amounts("від 300 до 1300 грн", ALLOWED), {300})
 
+    def test_first_price_in_enumeration_detected(self):
+        # Природна відповідь на «скільки коштує стрижка і купання?»: валюта одна,
+        # у кінці. Без нормалізації сполучника перша ціна не перевірялась би.
+        for text in ("300 та 1300 грн", "300 і 1300 грн", "300 або 1300 грн",
+                     "300 й 1300 грн", "стрижка й купання — 300 та 1300 грн"):
+            with self.subTest(text=text):
+                self.assertEqual(ai_guard.unknown_amounts(text, ALLOWED), {300})
+
+    def test_number_far_from_currency_is_not_checked(self):
+        # Свідома межа покриття: між сумою і валютою стоїть іменник, тож пара не
+        # розпізнається. Ловити будь-яке число без валюти не можна — у самому
+        # блоці даних є ваги («до 4 кг») і вони давали б хибні спрацювання
+        # щоразу, з'їдаючи бюджет сповіщень адмінам.
+        self.assertEqual(ai_guard.amounts_in("стрижка 300 та комплекс 1300 грн"), {1300})
+
+    def test_phone_and_date_not_glued_into_price(self):
+        # Нормалізація тире не має робити з телефона чи дати «суму»: хибні
+        # спрацювання їдять бюджет record_guard_trip, а це єдиний сигнал
+        # адмінам про те, що запобіжник поплив.
+        self.assertEqual(ai_guard.amounts_in(f"Телефон {ai_guard.HELP_PHONE} — 1300 грн"), {1300})
+        self.assertEqual(ai_guard.amounts_in("Запис на 20.08 - 1300 грн"), {1300})
+
     def test_weight_in_title_not_glued_into_range(self):
         # «до 4 кг» не число-до-числа, тож нормалізація його не зачіпає.
         self.assertEqual(ai_guard.amounts_in("Йорк до 4 кг — 1300 грн"), {1300})

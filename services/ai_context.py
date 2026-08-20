@@ -64,13 +64,23 @@ def _matched_services(pet: dict, services: list[dict]) -> list[dict]:
     return booking.match_services_by_breed(GENERIC_BREED_KEY, slim, weight)
 
 
-def _price_row(service: dict, categories: dict[int, str] | None) -> str:
-    """Рядок прайсу з категорією: без неї моделі дістаються однакові назви з
+def _price_label(service: dict, categories: dict[int, str] | None) -> str:
+    """Назва послуги з категорією: без неї моделі дістаються однакові назви з
     різними цінами (у флоу запису категорію обирає клієнт, тут — нікому)."""
     title = _clean(service["title"])
     category = _clean((categories or {}).get(service.get("category_id"), ""))
-    label = f"{category}: {title}" if category else title
-    return f"- {label} — {booking.format_price(service)}"
+    return f"{category}: {title}" if category else title
+
+
+def _merged_price(group: list[dict]) -> dict:
+    """Одна мітка з кількома цінами (категорії не завантажились або в каталозі
+    дублікат) — показуємо діапазон, а не одну з цін навмання: одна з них
+    неминуче хибна, а моделі нічим їх розрізнити."""
+    priced = [s for s in group if s.get("price_min")]
+    if len(group) == 1 or not priced:
+        return group[0]
+    return {"price_min": min(s["price_min"] for s in priced),
+            "price_max": max(s.get("price_max") or s["price_min"] for s in priced)}
 
 
 def build_context(pets: list[dict], services: list[dict] | None, branches: list[dict],
@@ -93,18 +103,15 @@ def build_context(pets: list[dict], services: list[dict] | None, branches: list[
             weight = pet.get("weight")
             head = f"Улюбленець {index}" + (f", вага {weight} кг" if weight else "")
             lines.append(f"{head}. Послуги під нього:")
-            shown: set[str] = set()
+            groups: dict[str, list[dict]] = {}
             for service in _matched_services(pet, services):
-                title = _clean(service["title"])
-                # Категорій немає (запит по них не вдався) — однакові назви з
-                # різними цінами стали б для моделі суперечливими рядками.
-                if not categories and title in shown:
-                    continue
-                shown.add(title)
-                row = _price_row(service, categories)
+                groups.setdefault(_price_label(service, categories), []).append(service)
+            for label, group in groups.items():
+                merged = _merged_price(group)
+                row = f"- {label} — {booking.format_price(merged)}"
                 lines.append(row)
                 price_lines.append(row)
-                amounts.update(_amounts_of(service))
+                amounts.update(_amounts_of(merged))
     elif services:
         prices = [s["price_min"] for s in services if s.get("price_min")]
         if prices:
@@ -132,9 +139,9 @@ CATALOG_TTL_SECONDS = 3600
 BRANCH_TTL_SECONDS = 86400  # адреси філій не змінюються роками
 EMPTY_TTL_SECONDS = 60      # для порожньої відповіді Altegio
 
-_catalog_cache: dict[str, tuple[float, list[dict]]] = {}
-_category_cache: dict[str, tuple[float, list[dict]]] = {}
-_branch_cache: dict[str, tuple[float, dict]] = {}
+_catalog_cache: dict[str, tuple[float, list[dict], int]] = {}
+_category_cache: dict[str, tuple[float, list[dict], int]] = {}
+_branch_cache: dict[str, tuple[float, dict, int]] = {}
 
 
 def reset_cache() -> None:
@@ -145,13 +152,17 @@ def reset_cache() -> None:
 
 
 def _cached(store: dict, key: str, ttl: int, fetch):
-    """Значення з кешу, інакше fetch(). При збої Altegio віддає прострочене, якщо є."""
+    """Значення з кешу, інакше fetch(). При збої Altegio віддає прострочене, якщо є.
+
+    Запис несе власний строк життя: порожня відповідь (Altegio відповів, але
+    нічим — тимчасовий збій або зламана конфігурація) живе коротко, бо сидіти на
+    ній годину дорого, а не кешувати зовсім означало б запит на кожне
+    повідомлення. Останні добрі дані порожня відповідь не витісняє: вони ще
+    знадобляться, якщо наступним прийде 502.
+    """
     now = time.monotonic()
     entry = store.get(key)
-    # Порожня відповідь живе коротко: Altegio відповів, але нічим — це або
-    # тимчасовий збій, або зламана конфігурація, і сидіти на ній годину дорого.
-    # Не кешувати зовсім теж не варіант: тоді це запит на кожне повідомлення.
-    if entry and now - entry[0] < (ttl if entry[1] else EMPTY_TTL_SECONDS):
+    if entry and now - entry[0] < entry[2]:
         return entry[1]
     try:
         value = fetch()
@@ -161,7 +172,11 @@ def _cached(store: dict, key: str, ttl: int, fetch):
             return entry[1]
         logger.warning(f"Altegio недоступний ({e}) — кешу для {key} немає")
         return None
-    store[key] = (now, value)
+    if not value and entry and entry[1]:
+        logger.warning(f"Altegio віддав порожнє для {key} — лишаю попередні дані")
+        store[key] = (now, entry[1], EMPTY_TTL_SECONDS)
+        return entry[1]
+    store[key] = (now, value, ttl if value else EMPTY_TTL_SECONDS)
     return value
 
 
