@@ -303,24 +303,21 @@ git commit -m "Додати збірку контексту салону для 
 - Consumes: `services.altegio.get_services(company_id) -> list[dict]`, `services.altegio.get_company(company_id) -> dict`, `services.altegio.AltegioError`, `db.client.get_client_by_tg_id(tg_user_id) -> dict | None`, `db.client.get_pets_by_client(client_id) -> list[dict]`, `config.ALTEGIO_LOCATIONS`
 - Produces: `catalog(company_id) -> list[dict] | None`, `branches() -> list[dict]`, `for_user(tg_user_id) -> AiContext`, `CATALOG_TTL_SECONDS = 3600`, `BRANCH_TTL_SECONDS = 86400`, `reset_cache()`
 
-- [ ] **Step 1: Перевірити живу форму `get_company`**
+- [ ] **Step 1: Врахувати фактичну форму `get_company` (перевірено 2026-08-20)**
 
-Ключі назви й адреси в документації Altegio не підтверджені. Перевірити на
-реальній філії перед тим, як покладатись на них:
+Живий прогін по всіх трьох філіях дав таке:
 
-```bash
-venv/bin/python -c "
-from config import ALTEGIO_LOCATIONS
-from services import altegio
-cid = [c for c in ALTEGIO_LOCATIONS.values() if c][0]
-data = altegio.get_company(cid)
-print(sorted(data.keys()))
-print('title:', data.get('title'), '| address:', data.get('address'))
-"
-```
+| Філія | `address` | `title` |
+|---|---|---|
+| Замарстинівська | `''` | `Mr Snoopy Замарстинівська 55Д  (ЖК Авалон)` |
+| Тернопільська | `''` | `Mr Snoopy Тернопільська 21Б (Новий Львів)` |
+| Володимира Великого | `вулиця Володимира Великого, 10е, Львів, Львівська область` | `Mr Snoopy Володимира Великого 10Е (ЖК Америка)` |
 
-Expected: у списку ключів є `title` і `address`, обидва непорожні. Якщо назви
-інші — використати фактичні в Step 3 і виправити тест.
+Тобто окреме поле адреси заповнене лише в однієї філії з трьох, а вулицю з
+номером будинку в усіх трьох несе `title`. Тому адреса філії — це
+`address or title`, а не `address`: інакше дві філії з трьох поїхали б у промпт
+без адреси. Хардкодити адреси в `config.py` не варто — це той самий дубль даних
+Altegio, якого архітектура уникає, і при переїзді філії розійдеться з CRM.
 
 - [ ] **Step 2: Написати падаючі тести**
 
@@ -360,6 +357,32 @@ class CatalogCacheTest(unittest.TestCase):
     def test_no_cache_and_failure_gives_none(self):
         with mock.patch.object(ai_context.altegio, "get_services", side_effect=AltegioError("502")):
             self.assertIsNone(ai_context.catalog("783219"))
+
+
+class BranchesTest(unittest.TestCase):
+    def setUp(self):
+        ai_context.reset_cache()
+
+    def test_title_used_when_address_empty(self):
+        # Дві філії з трьох мають порожнє поле адреси, вулиця живе в назві.
+        with mock.patch.object(ai_context.altegio, "get_company",
+                               return_value={"title": "Mr Snoopy Замарстинівська 55Д",
+                                             "address": ""}):
+            result = ai_context.branches()
+        self.assertTrue(all(b["address"] == "Mr Snoopy Замарстинівська 55Д" for b in result))
+
+    def test_address_preferred_when_present(self):
+        with mock.patch.object(ai_context.altegio, "get_company",
+                               return_value={"title": "Mr Snoopy Володимира Великого 10Е",
+                                             "address": "вулиця Володимира Великого, 10е, Львів"}):
+            result = ai_context.branches()
+        self.assertTrue(all(b["address"].startswith("вулиця") for b in result))
+
+    def test_branch_survives_altegio_failure(self):
+        with mock.patch.object(ai_context.altegio, "get_company", side_effect=AltegioError("502")):
+            result = ai_context.branches()
+        self.assertEqual(len(result), len(ai_context.ALTEGIO_LOCATIONS))
+        self.assertTrue(all(b["address"] is None for b in result))
 
 
 CLIENT = {"id": 8, "altegio_company_id": "783219", "registration_done": True}
@@ -461,12 +484,18 @@ def catalog(company_id: str) -> list[dict] | None:
 
 def branches() -> list[dict]:
     """Усі філії з адресами. Адреса з Altegio: дублювати її в config суперечило б
-    принципу «Altegio — джерело правди»."""
+    принципу «Altegio — джерело правди».
+
+    `address` заповнене лише в однієї філії з трьох, зате `title` в усіх трьох
+    містить вулицю з номером ("Mr Snoopy Замарстинівська 55Д (ЖК Авалон)") —
+    звідси фолбек на назву.
+    """
     result = []
     for name, company_id in ALTEGIO_LOCATIONS.items():
         info = _cached(_branch_cache, f"company:{company_id}", BRANCH_TTL_SECONDS,
                        lambda cid=company_id: altegio.get_company(cid)) if company_id else None
-        result.append({"name": name, "address": (info or {}).get("address")})
+        info = info or {}
+        result.append({"name": name, "address": info.get("address") or info.get("title")})
     return result
 
 
@@ -507,7 +536,7 @@ def for_user(tg_user_id: int) -> AiContext:
 - [ ] **Step 5: Прогнати — має пройти**
 
 Run: `venv/bin/python -m unittest services.test_ai_context -v`
-Expected: PASS, 16 тестів
+Expected: PASS, 18 тестів
 
 - [ ] **Step 6: Коміт**
 
@@ -1113,7 +1142,7 @@ Expected: `ok` без трейсбеків
 - [ ] **Step 3: Прогнати весь набір тестів**
 
 Run: `venv/bin/python -m unittest services.test_ai_context services.test_ai_guard services.test_groq_client -v`
-Expected: PASS, 38 тестів
+Expected: PASS, 40 тестів
 
 - [ ] **Step 4: Коміт**
 
@@ -1326,8 +1355,8 @@ venv/bin/python -m unittest \
   services.test_ai_quota_digest
 ```
 
-Expected: OK, 99 тестів (52 наявних + 47 нових). Якщо наявних тестів у репозиторії
-стало більше — орієнтуватись на «нових 47, старі всі зелені».
+Expected: OK, 101 тест (52 наявних + 49 нових). Якщо наявних тестів у репозиторії
+стало більше — орієнтуватись на «нових 49, старі всі зелені».
 
 - [ ] **Step 2: Оновити `PLAN.md`**
 
