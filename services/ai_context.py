@@ -120,7 +120,7 @@ def _cached(store: dict, key: str, ttl: int, fetch):
     """Значення з кешу, інакше fetch(). При збої Altegio віддає прострочене, якщо є."""
     now = time.monotonic()
     entry = store.get(key)
-    if entry and now >= entry[0] and now - entry[0] < ttl:
+    if entry and now - entry[0] < ttl:
         return entry[1]
     try:
         value = fetch()
@@ -184,9 +184,8 @@ def for_user(tg_user_id: int) -> AiContext:
                 logger.warning(f"Supabase недоступний при читанні улюбленців: {e}")
 
         company_id = (client or {}).get("altegio_company_id") or _reference_company_id()
-        branch_list = branches()
         services = catalog(company_id) if company_id else None
-        return build_context(pets, services, branch_list)
+        return build_context(pets, services, branches())
     except Exception as e:
         logger.error(f"Не вдалось скласти контекст для {tg_user_id}: {e}", exc_info=True)
         return EMPTY

@@ -91,24 +91,26 @@ class CatalogCacheTest(unittest.TestCase):
         ai_context.reset_cache()
 
     def test_second_call_within_ttl_does_not_refetch(self):
-        with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES) as fetch:
+        with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES) as fetch, \
+             mock.patch.object(ai_context.time, "monotonic", side_effect=[1000.0, 1000.5]):
             ai_context.catalog("783219")
             ai_context.catalog("783219")
         self.assertEqual(fetch.call_count, 1)
 
     def test_refetch_after_ttl(self):
-        with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES) as fetch:
+        with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES) as fetch, \
+             mock.patch.object(ai_context.time, "monotonic",
+                               side_effect=[1000.0, 1000.0 + ai_context.CATALOG_TTL_SECONDS + 10]):
             ai_context.catalog("783219")
-            with mock.patch.object(ai_context.time, "monotonic",
-                                   return_value=ai_context.CATALOG_TTL_SECONDS + 10):
-                ai_context.catalog("783219")
+            ai_context.catalog("783219")
         self.assertEqual(fetch.call_count, 2)
 
     def test_stale_cache_served_when_altegio_fails(self):
-        with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES):
+        with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES), \
+             mock.patch.object(ai_context.time, "monotonic", side_effect=[1000.0]):
             ai_context.catalog("783219")
         with mock.patch.object(ai_context.time, "monotonic",
-                               return_value=ai_context.CATALOG_TTL_SECONDS + 10), \
+                               side_effect=[1000.0 + ai_context.CATALOG_TTL_SECONDS + 10]), \
              mock.patch.object(ai_context.altegio, "get_services", side_effect=AltegioError("502")):
             self.assertEqual(ai_context.catalog("783219"), SERVICES)
 
@@ -183,6 +185,7 @@ class ForUserTest(unittest.TestCase):
     def test_any_failure_never_raises(self):
         with mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("boom")), \
+             mock.patch.object(ai_context, "catalog", side_effect=Exception("boom")), \
              mock.patch.object(ai_context, "branches", side_effect=Exception("boom")):
             self.assertEqual(ai_context.for_user(1), ai_context.EMPTY)
 
