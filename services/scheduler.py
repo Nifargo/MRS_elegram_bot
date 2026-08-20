@@ -261,7 +261,11 @@ def _run_daily_tasks() -> None:
         if success:
             db.set_cron_last_run(REBOOK_PROMO_KEY, today)
 
-    if is_quota_digest_due(now, db.get_cron_last_run(GROQ_QUOTA_KEY)):
+    # Груба перевірка години — щоб не ходити в Supabase на кожному тику з
+    # півночі, як і в блоках вище; точну хвилину порогу знає предикат.
+    if now.hour >= GROQ_QUOTA_DIGEST_TIME.hour and is_quota_digest_due(
+        now, db.get_cron_last_run(GROQ_QUOTA_KEY)
+    ):
         try:
             if send_quota_digest():
                 db.set_cron_last_run(GROQ_QUOTA_KEY, today)
