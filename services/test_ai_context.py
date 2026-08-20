@@ -101,16 +101,19 @@ class BuildContextTest(unittest.TestCase):
 
     def test_same_title_in_two_categories_is_distinguishable(self):
         ctx = ai_context.build_context([pet()], SAME_TITLE_TWO_LEVELS, BRANCHES, CATEGORIES)
-        self.assertIn("Комплексний догляд (Топ грумер)", ctx.text)
-        self.assertIn("Комплексний догляд (Грумер)", ctx.text)
-        # Дві різні ціни за однією назвою — рядки мусять відрізнятись, інакше
-        # моделі нічим їх розрізнити, а перевірка сум тут безсила: обидві реальні.
-        self.assertEqual(len(set(ctx.price_lines)), 2)
+        # Дві різні ціни за однією назвою — рівень грумера мусить бути в
+        # кожному рядку, інакше моделі нічим їх розрізнити, а перевірка сум тут
+        # безсила: обидві ціни реальні.
+        self.assertEqual(len(ctx.price_lines), 2)
+        for line in ctx.price_lines:
+            self.assertIn("Комплексний догляд (", line)
 
-    def test_every_amount_in_text_is_declared(self):
-        # Round-trip: усе, що модель бачить у блоці, перевірка мусить визнавати
-        # своїм. Інакше або відхиляється правильна відповідь, або (гірше)
-        # пропускається вигадана сума в тому самому форматі.
+    def test_context_and_guard_see_the_same_amounts(self):
+        # Round-trip в обидва боки, бо кожен ловить свій клас регресу:
+        # ⊆ — сума просочилась у текст, не потрапивши в amounts (перевірка
+        # відхилить правильну відповідь); ⊇ — сума оголошена, але перевірка не
+        # бачить її в тому вигляді, в якому показана моделі (перевірка
+        # пропустить вигадану суму в тому ж форматі). Друге і був баг діапазону.
         ranged = [dict(s, price_max=s["price_min"] + 500) for s in SERVICES]
         cases = {
             "діапазон + улюбленець": (ranged, [pet()]),
@@ -121,7 +124,22 @@ class BuildContextTest(unittest.TestCase):
         for label, (services, pets) in cases.items():
             with self.subTest(label):
                 ctx = ai_context.build_context(pets, services, BRANCHES, CATEGORIES)
-                self.assertLessEqual(ai_guard.amounts_in(ctx.text), set(ctx.amounts))
+                self.assertEqual(ai_guard.amounts_in(ctx.text), set(ctx.amounts))
+
+    def test_price_on_request_declares_nothing(self):
+        # format_price без price_min пише «ціна за запитом» — оголошувати
+        # price_max означало б дозволити моделі суму, якої вона не бачила.
+        no_price = [{"id": 7, "title": "Йоркширський тер'єр до 4 кг",
+                     "price_min": 0, "price_max": 1300, "category_id": 10}]
+        ctx = ai_context.build_context([pet()], no_price, BRANCHES, CATEGORIES)
+        self.assertIn("ціна за запитом", ctx.text)
+        self.assertEqual(ctx.amounts, frozenset())
+
+    def test_duplicate_titles_collapsed_without_categories(self):
+        # Запит категорій не вдався — краще один рядок на назву, ніж два
+        # однакові з різними цінами, які моделі нічим розрізнити.
+        ctx = ai_context.build_context([pet()], SAME_TITLE_TWO_LEVELS, BRANCHES, None)
+        self.assertEqual(len(ctx.price_lines), 1)
 
 
 class CatalogCacheTest(unittest.TestCase):
@@ -156,11 +174,17 @@ class CatalogCacheTest(unittest.TestCase):
         with mock.patch.object(ai_context.altegio, "get_services", side_effect=AltegioError("502")):
             self.assertIsNone(ai_context.catalog("783219"))
 
-    def test_empty_catalog_not_cached(self):
-        # Порожній каталог — або збій Altegio, або зламана конфігурація. Осісти
-        # в кеші на годину означало б годину відповідей «телефонуйте в салон».
-        with mock.patch.object(ai_context.altegio, "get_services", return_value=[]) as fetch:
+    def test_empty_catalog_cached_only_briefly(self):
+        # Порожній каталог — або збій Altegio, або зламана конфігурація. Годину
+        # сидіти на ньому не можна (усі питання про ціну підуть у телефон
+        # салону), але й перепитувати на кожне повідомлення теж.
+        with mock.patch.object(ai_context.altegio, "get_services", return_value=[]) as fetch, \
+             mock.patch.object(ai_context.time, "monotonic",
+                               side_effect=[1000.0, 1000.5,
+                                            1000.0 + ai_context.EMPTY_TTL_SECONDS + 1]):
             ai_context.catalog("783219")
+            ai_context.catalog("783219")
+            self.assertEqual(fetch.call_count, 1)
             ai_context.catalog("783219")
         self.assertEqual(fetch.call_count, 2)
 

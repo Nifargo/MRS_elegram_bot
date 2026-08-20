@@ -93,7 +93,14 @@ def build_context(pets: list[dict], services: list[dict] | None, branches: list[
             weight = pet.get("weight")
             head = f"Улюбленець {index}" + (f", вага {weight} кг" if weight else "")
             lines.append(f"{head}. Послуги під нього:")
+            shown: set[str] = set()
             for service in _matched_services(pet, services):
+                title = _clean(service["title"])
+                # Категорій немає (запит по них не вдався) — однакові назви з
+                # різними цінами стали б для моделі суперечливими рядками.
+                if not categories and title in shown:
+                    continue
+                shown.add(title)
                 row = _price_row(service, categories)
                 lines.append(row)
                 price_lines.append(row)
@@ -114,11 +121,16 @@ def build_context(pets: list[dict], services: list[dict] | None, branches: list[
 
 
 def _amounts_of(service: dict) -> set[int]:
-    return {int(v) for v in (service.get("price_min"), service.get("price_max")) if v}
+    """Лише те, що справді пішло в текст: без price_min format_price пише
+    «ціна за запитом», тож і оголошувати нічого."""
+    if not service.get("price_min"):
+        return set()
+    return {int(v) for v in (service["price_min"], service.get("price_max")) if v}
 
 
 CATALOG_TTL_SECONDS = 3600
 BRANCH_TTL_SECONDS = 86400  # адреси філій не змінюються роками
+EMPTY_TTL_SECONDS = 60      # для порожньої відповіді Altegio
 
 _catalog_cache: dict[str, tuple[float, list[dict]]] = {}
 _category_cache: dict[str, tuple[float, list[dict]]] = {}
@@ -136,7 +148,10 @@ def _cached(store: dict, key: str, ttl: int, fetch):
     """Значення з кешу, інакше fetch(). При збої Altegio віддає прострочене, якщо є."""
     now = time.monotonic()
     entry = store.get(key)
-    if entry and now - entry[0] < ttl:
+    # Порожня відповідь живе коротко: Altegio відповів, але нічим — це або
+    # тимчасовий збій, або зламана конфігурація, і сидіти на ній годину дорого.
+    # Не кешувати зовсім теж не варіант: тоді це запит на кожне повідомлення.
+    if entry and now - entry[0] < (ttl if entry[1] else EMPTY_TTL_SECONDS):
         return entry[1]
     try:
         value = fetch()
@@ -146,8 +161,7 @@ def _cached(store: dict, key: str, ttl: int, fetch):
             return entry[1]
         logger.warning(f"Altegio недоступний ({e}) — кешу для {key} немає")
         return None
-    if value:  # порожнє — або збій Altegio, або зламана конфігурація: не кешуємо
-        store[key] = (now, value)
+    store[key] = (now, value)
     return value
 
 
@@ -162,7 +176,7 @@ def categories(company_id: str) -> dict[int, str]:
     без неї в живому каталозі 104 назви з 327 повторюються з різними цінами."""
     found = _cached(_category_cache, company_id, CATALOG_TTL_SECONDS,
                     lambda: altegio.get_service_categories(company_id))
-    return {c["id"]: c["title"] for c in (found or [])}
+    return {c["id"]: c.get("title", "") for c in (found or []) if c.get("id")}
 
 
 def branches() -> list[dict]:

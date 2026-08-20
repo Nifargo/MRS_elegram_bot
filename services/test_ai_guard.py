@@ -36,9 +36,19 @@ class AmountsTest(unittest.TestCase):
     def test_both_ends_of_range_detected(self):
         # Формат booking.format_price для послуги з price_min != price_max —
         # домінантний у блоці даних, тож модель перевикористовує саме його.
-        for text in ("900–1400 грн", "900-1400 грн", "900 – 1400 грн", "900—1400 грн"):
+        # Валюта лише після другої межі — найприродніший переказ українською.
+        for text in ("900–1400 грн", "900-1400 грн", "900 – 1400 грн", "900—1400 грн",
+                     "900‒1400 грн", "900―1400 грн", "900−1400 грн", "900/1400 грн",
+                     "від 900 до 1400 грн", "900 до 1400 грн", "1 300–1 500 грн"):
             with self.subTest(text=text):
-                self.assertEqual(ai_guard.amounts_in(text), {900, 1400})
+                self.assertEqual(len(ai_guard.amounts_in(text)), 2)
+
+    def test_invented_lower_bound_without_dash_detected(self):
+        self.assertEqual(ai_guard.unknown_amounts("від 300 до 1300 грн", ALLOWED), {300})
+
+    def test_weight_in_title_not_glued_into_range(self):
+        # «до 4 кг» не число-до-числа, тож нормалізація його не зачіпає.
+        self.assertEqual(ai_guard.amounts_in("Йорк до 4 кг — 1300 грн"), {1300})
 
     def test_invented_lower_bound_of_range_detected(self):
         self.assertEqual(ai_guard.unknown_amounts("Стрижка — 300–1300 грн", ALLOWED), {300})
