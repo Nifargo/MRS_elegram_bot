@@ -127,7 +127,8 @@ def record_guard_trip(now: float | None = None) -> bool:
 
     Ловить сценарій «Groq змінив модель або промпт поплив, бот тихо перейшов у
     режим вічного фолбеку»: така поломка дає стабільний потік відхилень, тож
-    лічильник у пам'яті процесу її помітить навіть після перезапуску.
+    після перезапуску лічильник набере поріг заново за перші ж кілька
+    відхилень — сповіщення прийде знову, без пам'яті про попередній прогін.
     """
     global _last_trip_alert
     now = time.monotonic() if now is None else now
@@ -148,10 +149,12 @@ def record_quota_block(tg_user_id: int, error_text: str) -> None:
 
 
 def quota_report() -> tuple[set[int], str]:
+    """Повернути tg_user_id, що наткнулись на 429, і текст останньої помилки."""
     return set(_quota_affected), _quota_error
 
 
 def clear_quota_report() -> None:
+    """Скинути накопичений дайджест після підтвердженої відправки (Task 7)."""
     global _quota_error
     _quota_affected.clear()
     _quota_error = ""

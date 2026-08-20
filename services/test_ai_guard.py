@@ -7,6 +7,7 @@ ALLOWED = frozenset({1300, 2400})
 
 class AmountsTest(unittest.TestCase):
     def test_plain_amount_allowed(self):
+        self.assertEqual(ai_guard.amounts_in("Комплекс — 1300 грн"), {1300})
         self.assertEqual(ai_guard.unknown_amounts("Комплекс — 1300 грн", ALLOWED), set())
 
     def test_invented_amount_detected(self):
@@ -125,7 +126,9 @@ class QuotaStateTest(unittest.TestCase):
         ai_guard.record_quota_block(1, "boom")
         ai_guard.reset_state()
         self.assertTrue(ai_guard.allow_message(1, now=100.0))
-        self.assertFalse(ai_guard.record_guard_trip(now=100.0))
+        for _ in range(ai_guard.GUARD_ALERT_THRESHOLD - 1):
+            self.assertFalse(ai_guard.record_guard_trip(now=100.0))
+        self.assertTrue(ai_guard.record_guard_trip(now=100.0))
         self.assertEqual(ai_guard.quota_report(), (set(), ""))
 
 
