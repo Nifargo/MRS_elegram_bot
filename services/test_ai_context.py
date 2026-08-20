@@ -169,7 +169,8 @@ class CatalogCacheTest(unittest.TestCase):
         with mock.patch.object(ai_context.time, "monotonic",
                                side_effect=[1000.0,
                                             1000.0 + ai_context.CATALOG_TTL_SECONDS + 1,
-                                            1000.0 + ai_context.CATALOG_TTL_SECONDS + 2]):
+                                            1000.0 + ai_context.CATALOG_TTL_SECONDS
+                                            + ai_context.EMPTY_TTL_SECONDS + 2]):
             with mock.patch.object(ai_context.altegio, "get_services", return_value=SERVICES):
                 ai_context.catalog("783219")
             with mock.patch.object(ai_context.altegio, "get_services", return_value=[]):
