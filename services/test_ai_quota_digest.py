@@ -53,7 +53,8 @@ class QuotaDigestTest(unittest.TestCase):
         with mock.patch.object(scheduler.db, "get_client_by_tg_id",
                                side_effect=Exception("Supabase недоступний")), \
              mock.patch.object(scheduler.notifications, "notify_admins",
-                               return_value=True) as notify:
+                               return_value=True) as notify, \
+             self.assertLogs(scheduler.logger, "WARNING"):
             self.assertTrue(scheduler.send_quota_digest())
         self.assertIn("111", notify.call_args.args[0])
 

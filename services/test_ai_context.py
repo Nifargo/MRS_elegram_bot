@@ -191,8 +191,10 @@ class ForUserTest(unittest.TestCase):
              mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("Supabase недоступний")), \
              mock.patch.object(ai_context, "catalog", return_value=SERVICES) as catalog_mock, \
-             mock.patch.object(ai_context, "branches", return_value=BRANCHES):
+             mock.patch.object(ai_context, "branches", return_value=BRANCHES), \
+             self.assertLogs(ai_context.logger, "WARNING") as logs:
             ctx = ai_context.for_user(651807767)
+        self.assertNotIn("651807767", logs.output[0])
         catalog_mock.assert_called_once_with("1")
         self.assertIn("Орієнтовні ціни", ctx.text)
         self.assertEqual(ctx.price_lines, [])
@@ -202,8 +204,10 @@ class ForUserTest(unittest.TestCase):
              mock.patch.object(ai_context.db, "get_client_by_tg_id",
                                side_effect=Exception("boom")), \
              mock.patch.object(ai_context, "catalog", side_effect=Exception("boom")), \
-             mock.patch.object(ai_context, "branches", side_effect=Exception("boom")):
+             mock.patch.object(ai_context, "branches", side_effect=Exception("boom")), \
+             self.assertLogs(ai_context.logger, "ERROR") as logs:
             self.assertEqual(ai_context.for_user(1), ai_context.EMPTY)
+        self.assertIn("boom", logs.output[0])
 
 
 if __name__ == "__main__":
