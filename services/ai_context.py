@@ -40,9 +40,7 @@ EMPTY = AiContext(text="", amounts=frozenset(), price_lines=[])
 def _clean(value) -> str:
     """Назви послуг і адреси пишуть адміни в Altegio — не ворожий вхід, але й не стерильний."""
     flat = " ".join(str(value or "").split())
-    for fragment in (BLOCK_MARK, "КІНЕЦЬ ДАНИХ", "ДАНІ САЛОНУ"):
-        flat = flat.replace(fragment, "")
-    return flat.strip()[:MAX_VALUE_LEN]
+    return flat.replace(BLOCK_MARK, "").strip()[:MAX_VALUE_LEN]
 
 
 def _matched_services(pet: dict, services: list[dict]) -> list[dict]:
