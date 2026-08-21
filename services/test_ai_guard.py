@@ -1,0 +1,200 @@
+import unittest
+
+from services import ai_guard
+
+ALLOWED = frozenset({1300, 2400})
+
+
+class AmountsTest(unittest.TestCase):
+    def test_plain_amount_allowed(self):
+        self.assertEqual(ai_guard.amounts_in("Комплекс — 1300 грн"), {1300})
+        self.assertEqual(ai_guard.unknown_amounts("Комплекс — 1300 грн", ALLOWED), set())
+
+    def test_invented_amount_detected(self):
+        self.assertEqual(ai_guard.unknown_amounts("Буде 999 грн", ALLOWED), {999})
+
+    def test_number_formats_normalized(self):
+        for text in ("1 300 грн", "1300грн", "1\u00a0300 гривень", "1,300 грн"):
+            with self.subTest(text=text):
+                self.assertEqual(ai_guard.amounts_in(text), {1300})
+
+    def test_prefix_hryvnia_and_uah_detected(self):
+        self.assertEqual(ai_guard.amounts_in("від ₴1300 до ₴2400"), {1300, 2400})
+        self.assertEqual(ai_guard.unknown_amounts("Комплекс 999 UAH", ALLOWED), {999})
+        self.assertEqual(ai_guard.unknown_amounts("Буде ₴999", ALLOWED), {999})
+
+    def test_sum_of_two_real_prices_rejected(self):
+        # Свідоме рішення спеки: підсумки заборонені, ціни перелічуються по позиціях.
+        self.assertEqual(ai_guard.unknown_amounts("Разом 3700 грн", ALLOWED), {3700})
+
+    def test_reply_without_amounts_passes(self):
+        self.assertEqual(ai_guard.unknown_amounts("Чекаємо вас у салоні!", ALLOWED), set())
+
+    def test_number_without_currency_ignored(self):
+        self.assertEqual(ai_guard.unknown_amounts("Стрижка триває 90 хвилин", ALLOWED), set())
+
+    def test_both_ends_of_range_detected(self):
+        # Формат booking.format_price для послуги з price_min != price_max —
+        # домінантний у блоці даних, тож модель перевикористовує саме його.
+        # Валюта лише після другої межі — найприродніший переказ українською.
+        for text in ("900–1400 грн", "900-1400 грн", "900 – 1400 грн", "900—1400 грн",
+                     "900‒1400 грн", "900―1400 грн", "900−1400 грн", "900/1400 грн",
+                     "від 900 до 1400 грн", "900 до 1400 грн", "1 300–1 500 грн"):
+            with self.subTest(text=text):
+                self.assertEqual(len(ai_guard.amounts_in(text)), 2)
+
+    def test_invented_lower_bound_without_dash_detected(self):
+        self.assertEqual(ai_guard.unknown_amounts("від 300 до 1300 грн", ALLOWED), {300})
+
+    def test_first_price_in_enumeration_detected(self):
+        # Природна відповідь на «скільки коштує стрижка і купання?»: валюта одна,
+        # у кінці. Без нормалізації сполучника перша ціна не перевірялась би.
+        for text in ("300 та 1300 грн", "300 і 1300 грн", "300 або 1300 грн",
+                     "300 й 1300 грн", "стрижка й купання — 300 та 1300 грн"):
+            with self.subTest(text=text):
+                self.assertEqual(ai_guard.unknown_amounts(text, ALLOWED), {300})
+
+    def test_number_far_from_currency_is_not_checked(self):
+        # Свідома межа покриття: між сумою і валютою стоїть іменник, тож пара не
+        # розпізнається. Ловити будь-яке число без валюти не можна — у самому
+        # блоці даних є ваги («до 4 кг») і вони давали б хибні спрацювання
+        # щоразу, з'їдаючи бюджет сповіщень адмінам.
+        self.assertEqual(ai_guard.amounts_in("стрижка 300 та комплекс 1300 грн"), {1300})
+
+    def test_phone_and_date_not_glued_into_price(self):
+        # Нормалізація тире не має робити з телефона чи дати «суму»: хибні
+        # спрацювання їдять бюджет record_guard_trip, а це єдиний сигнал
+        # адмінам про те, що запобіжник поплив.
+        self.assertEqual(ai_guard.amounts_in(f"Телефон {ai_guard.HELP_PHONE} — 1300 грн"), {1300})
+        self.assertEqual(ai_guard.amounts_in("Запис на 20.08 - 1300 грн"), {1300})
+
+    def test_weight_in_title_not_glued_into_range(self):
+        # «до 4 кг» не число-до-числа, тож нормалізація його не зачіпає.
+        self.assertEqual(ai_guard.amounts_in("Йорк до 4 кг — 1300 грн"), {1300})
+
+    def test_invented_lower_bound_of_range_detected(self):
+        self.assertEqual(ai_guard.unknown_amounts("Стрижка — 300–1300 грн", ALLOWED), {300})
+
+    def test_weight_range_in_title_not_read_as_money(self):
+        self.assertEqual(ai_guard.amounts_in("Йорк 2-4 кг — 1300 грн"), {1300})
+
+
+class LinksTest(unittest.TestCase):
+    def test_widget_link_kept(self):
+        text = f"Записатись: {ai_guard.ALTEGIO_BOOKING_WIDGET_URL}"
+        self.assertIn(ai_guard.ALTEGIO_BOOKING_WIDGET_URL, ai_guard.strip_foreign_links(text))
+
+    def test_widget_link_kept_with_trailing_period(self):
+        text = f"Записатись тут: {ai_guard.ALTEGIO_BOOKING_WIDGET_URL}."
+        cleaned = ai_guard.strip_foreign_links(text)
+        self.assertIn(ai_guard.ALTEGIO_BOOKING_WIDGET_URL, cleaned)
+
+    def test_foreign_link_removed(self):
+        cleaned = ai_guard.strip_foreign_links("Дивіться https://evil.example/promo тут")
+        self.assertNotIn("evil.example", cleaned)
+
+    def test_evil_url_in_query_removed(self):
+        poisoned = f"{ai_guard.ALTEGIO_BOOKING_WIDGET_URL}?u=https://evil.com/steal"
+        cleaned = ai_guard.strip_foreign_links(f"Запис: {poisoned}")
+        self.assertNotIn("evil.com", cleaned)
+        self.assertNotIn("://", cleaned)
+
+    def test_evil_url_glued_removed(self):
+        poisoned = f"{ai_guard.ALTEGIO_BOOKING_WIDGET_URL}https://evil.com/steal"
+        cleaned = ai_guard.strip_foreign_links(f"Запис: {poisoned}")
+        self.assertNotIn("evil.com", cleaned)
+
+    def test_uppercase_scheme_removed(self):
+        # Telegram робить адресу клікабельною незалежно від регістру схеми.
+        for text in ("Ось HTTPS://evil.example/x тут", "Ось Http://evil.example тут"):
+            with self.subTest(text=text):
+                self.assertNotIn("evil.example", ai_guard.strip_foreign_links(text))
+
+    def test_newlines_preserved_without_links(self):
+        text = "Прайс:\n- Комплекс 1300 грн\n- Ванна 900 грн"
+        self.assertEqual(ai_guard.strip_foreign_links(text), text)
+
+
+class RateLimitTest(unittest.TestCase):
+    def setUp(self):
+        ai_guard.reset_state()
+
+    def test_allows_up_to_limit(self):
+        for _ in range(ai_guard.AI_RATE_LIMIT):
+            self.assertTrue(ai_guard.allow_message(1, now=100.0))
+        self.assertFalse(ai_guard.allow_message(1, now=100.0))
+
+    def test_window_slides(self):
+        for _ in range(ai_guard.AI_RATE_LIMIT):
+            ai_guard.allow_message(1, now=100.0)
+        later = 100.0 + ai_guard.RATE_WINDOW_SECONDS + 1
+        self.assertTrue(ai_guard.allow_message(1, now=later))
+
+    def test_users_counted_separately(self):
+        for _ in range(ai_guard.AI_RATE_LIMIT):
+            ai_guard.allow_message(1, now=100.0)
+        self.assertTrue(ai_guard.allow_message(2, now=100.0))
+
+
+class GuardTripTest(unittest.TestCase):
+    def setUp(self):
+        ai_guard.reset_state()
+
+    def test_alerts_after_threshold(self):
+        for _ in range(ai_guard.GUARD_ALERT_THRESHOLD - 1):
+            self.assertFalse(ai_guard.record_guard_trip(now=100.0))
+        self.assertTrue(ai_guard.record_guard_trip(now=100.0))
+
+    def test_no_second_alert_within_hour(self):
+        for _ in range(ai_guard.GUARD_ALERT_THRESHOLD):
+            ai_guard.record_guard_trip(now=100.0)
+        for _ in range(ai_guard.GUARD_ALERT_THRESHOLD):
+            self.assertFalse(ai_guard.record_guard_trip(now=200.0))
+
+
+class QuotaStateTest(unittest.TestCase):
+    def setUp(self):
+        ai_guard.reset_state()
+
+    def test_collects_distinct_users(self):
+        ai_guard.record_quota_block(1, "rate limit reached")
+        ai_guard.record_quota_block(1, "rate limit reached")
+        ai_guard.record_quota_block(2, "rate limit reached")
+        users, error = ai_guard.quota_report()
+        self.assertEqual(users, {1, 2})
+        self.assertEqual(error, "rate limit reached")
+
+    def test_clear_empties_report(self):
+        ai_guard.record_quota_block(1, "boom")
+        ai_guard.clear_quota_report()
+        self.assertEqual(ai_guard.quota_report(), (set(), ""))
+
+    def test_reset_state_clears_all(self):
+        for _ in range(ai_guard.AI_RATE_LIMIT):
+            ai_guard.allow_message(1, now=100.0)
+        for _ in range(ai_guard.GUARD_ALERT_THRESHOLD):
+            ai_guard.record_guard_trip(now=100.0)
+        ai_guard.record_quota_block(1, "boom")
+        ai_guard.reset_state()
+        self.assertTrue(ai_guard.allow_message(1, now=100.0))
+        for _ in range(ai_guard.GUARD_ALERT_THRESHOLD - 1):
+            self.assertFalse(ai_guard.record_guard_trip(now=100.0))
+        self.assertTrue(ai_guard.record_guard_trip(now=100.0))
+        self.assertEqual(ai_guard.quota_report(), (set(), ""))
+
+
+class FallbackTest(unittest.TestCase):
+    def test_price_fallback_lists_real_prices(self):
+        text = ai_guard.price_fallback(["- Комплекс — 1300 грн"])
+        self.assertIn("1300 грн", text)
+        self.assertIn(ai_guard.HELP_PHONE, text)
+        self.assertIn("Остаточну суму підтвердить майстер", text)
+
+    def test_price_fallback_without_prices_gives_phone(self):
+        text = ai_guard.price_fallback([])
+        self.assertIn(ai_guard.HELP_PHONE, text)
+        self.assertNotIn("грн", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
