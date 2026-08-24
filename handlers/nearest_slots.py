@@ -44,7 +44,7 @@ Callback data:
 """
 import logging
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import ContextTypes
@@ -56,8 +56,8 @@ from handlers.common import (
     UA_WEEKDAYS,
     format_date_label,
     hide_menu_button,
+    kyiv_datetime,
     show_menu_button,
-    to_kyiv_iso,
     with_retry,
 )
 from handlers.menu import MAIN_MENU
@@ -469,6 +469,8 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     loc_name = booking.location_name(company_id)
+    starts_dt = kyiv_datetime(date_str, time_str)
+    ends_dt = starts_dt + timedelta(seconds=seance_length)
     try:
         db.upsert_tracked_record({
             "altegio_record_id": record["id"],
@@ -476,7 +478,8 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "pet_id": pet["id"],
             # Не `record["datetime"]`: Altegio віддає там offset +03:00 і в
             # зимовий сезон, коли Київ у +02:00 (див. services/altegio_webhook.py).
-            "starts_at": to_kyiv_iso(date_str, time_str),
+            "starts_at": starts_dt.isoformat(),
+            "ends_at": ends_dt.isoformat(),
             "service_title": service["title"],
             "location_title": loc_name,
             "status": "active",
@@ -485,6 +488,7 @@ async def _confirm(message, context: ContextTypes.DEFAULT_TYPE) -> None:
             "staff_id": staff_id,
             "raw_json": record,
         })
+        notifications.schedule_visit_notifications(n["client_id"], record["id"], starts_dt, ends_dt)
     except Exception as e:
         logger.error(f"Не вдалося зберегти tracked_record {record.get('id')}: {e}")
 
