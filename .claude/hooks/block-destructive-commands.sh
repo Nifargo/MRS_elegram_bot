@@ -50,7 +50,7 @@ if echo "$COMMAND" | grep -qE '(^|[;&|()]+[[:space:]]*)git[[:space:]]+push'; the
   fi
 
   # Block force push (allow --force-with-lease)
-  if echo "$COMMAND" | grep -qE 'git[[:space:]]+push.*(-[a-zA-Z]*f|--force)([[:space:]]|$)' && \
+if echo "$COMMAND" | grep -qE 'git[[:space:]]+push.*[[:space:]](-[a-zA-Z]*f|--force)([[:space:]]|$)' && \
      ! echo "$COMMAND" | grep -q '\-\-force-with-lease'; then
     deny "Blocked: force push is not allowed. Use --force-with-lease if you need to overwrite remote."
   fi
@@ -72,8 +72,8 @@ fi
 
 # Block ANY rm with both recursive + force flags (rm -rf, rm -fr, rm -Rf, --recursive --force, etc.)
 if echo "$COMMAND" | grep -qE '(^|[;&|]\s*)rm\s+' && \
-   echo "$COMMAND" | grep -qE '(-[a-zA-Z]*r[a-zA-Z]*|--recursive)' && \
-   echo "$COMMAND" | grep -qE '(-[a-zA-Z]*f[a-zA-Z]*|--force)'; then
+   echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*r[a-zA-Z]*|--recursive)([[:space:]]|$)' && \
+   echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--force)([[:space:]]|$)'; then
   deny "Blocked: rm with both recursive and force flags is not allowed. Use 'rm -r <path>' without -f so you get prompted."
 fi
 

@@ -1,13 +1,18 @@
-# Graph Report - .  (2026-08-24)
+# Graph Report - grooming-telegram-bot  (2026-08-26)
 
 ## Corpus Check
-- 96 files · ~66,662 words
+- 94 files · ~66,809 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1539 nodes · 3043 edges · 123 communities (88 shown, 35 thin omitted)
-- Extraction: 93% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 193 edges (avg confidence: 0.76)
+- 1669 nodes · 3491 edges · 138 communities (99 shown, 39 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 196 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
+
+## Graph Freshness
+- Built from commit: `03aa6ec9`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - [[_COMMUNITY_Клієнти й утиліти БД|Клієнти й утиліти БД]]
@@ -131,18 +136,32 @@
 - [[_COMMUNITY_MAIN_MENU keyboard|MAIN_MENU keyboard]]
 - [[_COMMUNITY_show_pets() — «🐾 Мої улюбленці»|show_pets() — «🐾 Мої улюбленці»]]
 - [[_COMMUNITY_pets.edit_conversation (ConversationHand…|pets.edit_conversation (ConversationHand…]]
+- [[_COMMUNITY_Community 123|Community 123]]
+- [[_COMMUNITY_Community 124|Community 124]]
+- [[_COMMUNITY_Community 125|Community 125]]
+- [[_COMMUNITY_Community 126|Community 126]]
+- [[_COMMUNITY_Community 127|Community 127]]
+- [[_COMMUNITY_Community 128|Community 128]]
+- [[_COMMUNITY_Community 129|Community 129]]
+- [[_COMMUNITY_Community 130|Community 130]]
+- [[_COMMUNITY_Community 131|Community 131]]
+- [[_COMMUNITY_Community 132|Community 132]]
+- [[_COMMUNITY_Community 133|Community 133]]
+- [[_COMMUNITY_Community 134|Community 134]]
+- [[_COMMUNITY_Community 135|Community 135]]
+- [[_COMMUNITY_Community 136|Community 136]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `with_retry()` - 83 edges
-2. `AltegioError` - 75 edges
-3. `datetime` - 38 edges
-4. `InlineKeyboardButton` - 35 edges
-5. `process_record()` - 33 edges
-6. `build_context()` - 25 edges
-7. `Task 3: Тижневе гейтування і відправка дампа` - 25 edges
-8. `show_menu_button()` - 24 edges
-9. `handle_callback()` - 23 edges
-10. `send_telegram_message()` - 23 edges
+2. `AltegioError` - 78 edges
+3. `with_retry()` - 76 edges
+4. `datetime` - 38 edges
+5. `InlineKeyboardButton` - 35 edges
+6. `process_record()` - 34 edges
+7. `show_menu_button()` - 30 edges
+8. `handle_callback()` - 26 edges
+9. `Update` - 25 edges
+10. `int` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Query memory: why register_handlers connects Bot Entrypoints community to 10 others` --references--> `start()`  [AMBIGUOUS]
@@ -153,8 +172,8 @@
   .cursor/agents/mrsnoopy-reviewer.md → services/ai_context.py
 - `Risk 5: PythonAnywhere free tier HTTPS proxy whitelist` --rationale_for--> `_session (requests Session with 502/503/504 retries)`  [INFERRED]
   PLAN.md → services/notifications.py
-- `Outbound traffic only via whitelisted HTTPS proxy` --rationale_for--> `_session (requests Session with 502/503/504 retries)`  [INFERRED]
-  .cursor/agents/mrsnoopy-reviewer.md → services/notifications.py
+- `No client PII in logs or the admin group` --rationale_for--> `handle_message()`  [INFERRED]
+  .cursor/agents/mrsnoopy-reviewer.md → handlers/ai_chat.py
 
 ## Hyperedges (group relationships)
 - **PreToolUse Bash hook pipeline (block → suggest → rewrite)** — claude_settings, hooks_block_destructive_commands, hooks_rtk_suggest, hooks_rtk_rewrite [EXTRACTED 1.00]
@@ -168,130 +187,126 @@
 - **Groq Quota Exhaustion Digest Flow** — handlers_ai_chat_handle_message, services_ai_guard_record_quota_block, services_ai_guard_quota_report, services_scheduler_is_quota_digest_due, services_scheduler_send_quota_digest, services_scheduler__run_daily_tasks [EXTRACTED 1.00]
 - **AI Reply Grounding and Output Guard Pipeline** — handlers_ai_chat_handle_message, services_ai_context_for_user, services_ai_context_aicontext, grooming_telegram_bot_groq_client_get_response, services_ai_guard_unknown_amounts, services_ai_guard_price_fallback, services_ai_guard_strip_foreign_links [EXTRACTED 1.00]
 
-## Communities (123 total, 35 thin omitted)
+## Communities (138 total, 39 thin omitted)
 
 ### Community 0 - "Клієнти й утиліти БД"
-Cohesion: 0.05
-Nodes (99): parse_weight(), to_kyiv_iso(), with_retry(), get_client_by_tg_id(), get_last_past_tracked_record(), Знайти клієнта за Telegram user_id. Повертає None, якщо не знайдено., Останній минулий (не скасований) запис клієнта — для «Повторити останній запис»., Оновити поля клієнта. (+91 more)
+Cohesion: 0.07
+Nodes (101): normalize_phone(), parse_weight(), with_retry(), Оновити поля клієнта., update_client(), format_date_label(), hide_menu_button(), normalize_phone() (+93 more)
 
 ### Community 1 - "Флоу запису й ціни"
 Cohesion: 0.07
-Nodes (81): Visit time comes from the naive `date` field, never `datetime`, _ask_service(), book_start() — «📅 Записатись», _confirm_booking(), format_price(), generic_breed_services(), location_name(), match_services_by_breed() (+73 more)
+Nodes (86): _ask_service(), book_start() — «📅 Записатись», _confirm_booking(), format_price(), generic_breed_services(), location_name(), match_services_by_breed(), price_start() — «💰 Дізнатись вартість» (+78 more)
 
 ### Community 2 - "Кроки діалогів: дата й час"
-Cohesion: 0.07
-Nodes (55): create_client_record(), Створити порожній запис клієнта (реєстрацію заповнюємо покроково)., booking._ask_date, booking._ask_time, my_bookings._ask_reschedule_date, my_bookings._confirm_reschedule, my_bookings._repeat_last_booking, nearest_slots._search_nearest_slots (+47 more)
+Cohesion: 0.14
+Nodes (29): create_client_record(), Створити порожній запис клієнта (реєстрацію заповнюємо покроково)., cancel_record(), create_client(), create_record(), find_client_by_phone(), get_client(), get_client_records() (+21 more)
 
 ### Community 3 - "Деплой на PythonAnywhere"
-Cohesion: 0.05
-Nodes (46): 1. Завантажити зміни на GitHub (на Mac), 1. Напиши боту в Telegram, 2. Оновити код на PythonAnywhere, 2. Перевір webhook статус, 3. Зупинити старий polling бот (якщо працює), 3. Подивись логи Flask, 4. Налаштувати Web App на PythonAnywhere, 5. Налаштувати WSGI файл (+38 more)
+Cohesion: 0.15
+Nodes (13): 1. Завантажити зміни на GitHub (на Mac), 3. Зупинити старий polling бот (якщо працює), 4. Налаштувати Web App на PythonAnywhere, 5. Налаштувати WSGI файл, 6. Налаштувати Virtualenv, 7. Перезавантажити Web App, 8. Перевірити що сайт працює, code:bash (cd ~/path/to/MRS_elegram_bot) (+5 more)
 
 ### Community 4 - "Inline-кнопки запису"
-Cohesion: 0.11
-Nodes (38): BaseHTTPRequestHandler, _ask_location(), _ask_staff(), _breed_eligible_levels(), _category_level(), handle_callback(), _level_of_text(), _location_keyboard() (+30 more)
+Cohesion: 0.17
+Nodes (39): _ask_location(), _ask_service(), _ask_staff(), _breed_eligible_levels(), _category_level(), _confirm(), handle_callback(), _level_of_text() (+31 more)
 
 ### Community 5 - "Картки улюбленців"
-Cohesion: 0.09
-Nodes (41): parse_date(), get_clients_with_altegio_link(), Клієнти, прив'язані до Altegio (для щоденної синхронізації вакцинації, Фаза 10)., bool, date, Розібрати дату у форматі ДД.ММ.РРРР. None, якщо формат/значення некоректні., _card_keyboard(), _card_text() (+33 more)
+Cohesion: 0.12
+Nodes (33): _card_keyboard(), _card_text(), _delete_confirm_keyboard(), edit_cancel(), edit_field_start(), edit_field_value(), _edit_keyboard(), _format_date() (+25 more)
 
 ### Community 6 - "Кеш каталогу й контекст AI"
-Cohesion: 0.09
-Nodes (29): ALTEGIO_LOCATIONS (branch name -> company_id), Task 2 Brief: Catalog Cache, Branch Directory, Orchestrator, Task 2 Report: Catalog Cache and for_user, _cached (TTL cache serving stale data on Altegio failure), _amounts_of(), branches(), _cached(), catalog() (+21 more)
+Cohesion: 0.10
+Nodes (36): NamedTuple, Task 1 Report: Pure Context Block Assembly, _amounts_of (only amounts actually rendered), _cached (TTL cache serving stale data on Altegio failure), _clean (flatten + strip === block marker), _merged_price (collapse duplicate titles into a range), _price_label (category-qualified service label), AiContext (+28 more)
 
 ### Community 7 - "Архітектурні рішення проєкту"
 Cohesion: 0.06
 Nodes (33): 0. Поточний стан і ключове рішення, Altegio API — що використовуємо, code:block1 (grooming-telegram-bot/), code:block2 (clients        id, tg_user_id (unique), altegio_client_id, p), code:block3 (Фаза 0 ✅ (фундамент + Altegio API + вебхуки)), Scheduler: PythonAnywhere Scheduled Task → HTTP endpoint, UI бота: Inline-кнопки + ConversationHandler, Архітектурні рішення (+25 more)
 
 ### Community 8 - "CRUD улюбленців і оцінок"
-Cohesion: 0.10
-Nodes (31): bool, create_pet(), create_rating(), delete_pending_notifications_for_record(), delete_pet(), get_active_tracked_records_in_range(), get_pet(), get_pets_by_client() (+23 more)
+Cohesion: 0.11
+Nodes (26): create_pet(), create_rating(), delete_pet(), get_last_past_tracked_record(), get_pet(), get_pets_by_client(), get_rating(), get_tracked_record_by_id() (+18 more)
 
 ### Community 9 - "Код-фрагменти планів AI"
 Cohesion: 0.10
-Nodes (27): code:python (# додати в services/test_ai_guard.py), code:python (# services/test_groq_client.py), code:python (SYSTEM_PROMPT = """), code:python (from groq import Groq, RateLimitError), code:python (import logging), code:bash (git add config.py groq_client.py services/test_groq_client.p), code:python ("""AI-чат: все, що не кнопки меню і не команди, йде в Groq."), code:bash (git add handlers/ai_chat.py) (+19 more)
+Nodes (21): AI-консультант на живих даних салону — план реалізації, code:python (SYSTEM_PROMPT = """), code:python (from groq import Groq, RateLimitError), code:python (import logging), code:bash (git add config.py groq_client.py services/test_groq_client.p), code:python ("""AI-чат: все, що не кнопки меню і не команди, йде в Groq."), code:bash (git add handlers/ai_chat.py), code:python (# services/test_ai_quota_digest.py) (+13 more)
 
 ### Community 10 - "Ліміти й стан запобіжників"
-Cohesion: 0.13
-Nodes (23): Silent failures are the costliest error class in this project, Match, Task 4 Brief: Rate Limit, Guard Trip Counter, Quota State, Task 4 Report: Rate Limit, Guard Trip Counter, Quota State, allow_message(), clear_quota_report(), _is_allowed_url(), _keep_allowed() (+15 more)
+Cohesion: 0.19
+Nodes (14): Silent failures are the costliest error class in this project, Task 4 Brief: Rate Limit, Guard Trip Counter, Quota State, Task 4 Report: Rate Limit, Guard Trip Counter, Quota State, allow_message(), float, int, quota_report(), False — особистий ліміт вичерпано, Groq викликати не треба.      Захищає спільну (+6 more)
 
 ### Community 11 - "Сповіщення адмінам і ретраї"
-Cohesion: 0.11
-Nodes (19): Sync Flask + async PTB; cron deliberately bypasses the event loop, Two deliberate retry policies (interactive vs cron), bytes, ADMIN_GROUP_CHAT_ID / ADMIN_TOPIC_ID, Dual retry policy: interactive (flat, fast) vs background (exponential, patient), _session (requests Session with 502/503/504 retries), notify_admins(), bool (+11 more)
+Cohesion: 0.12
+Nodes (15): Outbound traffic only via whitelisted HTTPS proxy, Two deliberate retry policies (interactive vs cron), bytes, Dual retry policy: interactive (flat, fast) vs background (exponential, patient), _is_allowed_url (netloc whitelist, no nested scheme), _session (requests Session with 502/503/504 retries), bool, datetime (+7 more)
 
 ### Community 12 - "Час візиту й таймзона"
-Cohesion: 0.13
-Nodes (21): _location_name (webhook), _parse_kyiv (webhook datetime localization), test_winter_visit_keeps_salon_wall_clock_time(), VisitHistoryTest, _branch_client_ids (per-branch Altegio client ids), _location_name (visit history), _visit_from_record (Altegio record to visit dict), _branch_client_ids() (+13 more)
+Cohesion: 0.15
+Nodes (18): _location_name (webhook), VisitHistoryTest, _branch_client_ids (per-branch Altegio client ids), _location_name (visit history), _visit_from_record (Altegio record to visit dict), _branch_client_ids(), Per-branch failure isolation with all-branches-failed escalation, get_past_visits() (+10 more)
 
 ### Community 13 - "Хуки агента"
-Cohesion: 0.10
-Nodes (10): .claude/settings.json (hook registration), deny(), main(), output, _rtk_audit_log(), format-on-save.sh script, graphify-remind.sh script, protect-files.sh script (+2 more)
+Cohesion: 0.08
+Nodes (15): .claude/settings.json (hook registration), deny(), find_project_root(), find_project_root(), deny(), main(), output, _rtk_audit_log() (+7 more)
 
 ### Community 14 - "Тести тижневого бекапу"
-Cohesion: 0.14
-Nodes (15): Тижневий бекап: склад дампа, сторінкове читання, гейтування по тижню, відправка., Ланцюжок supabase.table().select().order().limit()[.gt()] одним моком., _stub_backup(), test_attempt_is_marked_before_run_with_today(), test_backup_exception_does_not_mark_week_done(), test_created_at_is_iso_with_kyiv_offset(), test_decision_gets_kyiv_now_and_both_marks(), test_dump_contains_every_table_and_counts() (+7 more)
+Cohesion: 0.13
+Nodes (17): Тижневий бекап: склад дампа, сторінкове читання, гейтування по тижню, відправка., Ланцюжок supabase.table().select().order().limit()[.gt()] одним моком., SendWeeklyBackupTest, _stub_backup(), test_attempt_is_marked_before_run_with_today(), test_backup_exception_does_not_mark_week_done(), test_created_at_is_iso_with_kyiv_offset(), test_decision_gets_kyiv_now_and_both_marks() (+9 more)
 
 ### Community 15 - "Задачі AI-контексту"
-Cohesion: 0.13
-Nodes (21): Branch Address Fallback to Company Title, Plan: AI Consultant on Live Salon Data, Progress: AI Grounded Context Feature, Task 1 Brief: Pure Context Block Assembly, Task 1 Report: Pure Context Block Assembly, Task 6 Brief: Wire AI Flow in Chat Handler, Task 6 Report: Wire AI Flow in Chat Handler, Task 7 Brief: Groq Quota Digest at 18:30 (+13 more)
+Cohesion: 0.18
+Nodes (9): ALTEGIO_LOCATIONS (branch name -> company_id), Branch Address Fallback to Company Title, Plan: AI Consultant on Live Salon Data, Task 1 Brief: Pure Context Block Assembly, Task 2 Brief: Catalog Cache, Branch Directory, Orchestrator, Task 2 Report: Catalog Cache and for_user, branches(), Усі філії з адресами. Адреса з Altegio: дублювати її в config суперечило б     п (+1 more)
 
 ### Community 16 - "Доступ до власних записів"
-Cohesion: 0.13
-Nodes (20): get_client_by_id(), get_tracked_record(), Кешований запис за внутрішнім id (дії клієнта: перенос/скасування)., Знайти клієнта за внутрішнім id., Кешований запис за id з Altegio. None, якщо ще не синхронізований., my_bookings._get_own_record, pets._get_own_pet, rating._owns_record (+12 more)
+Cohesion: 0.16
+Nodes (16): get_client_by_tg_id(), get_tracked_record(), Знайти клієнта за Telegram user_id. Повертає None, якщо не знайдено., Кешований запис за id з Altegio. None, якщо ще не синхронізований., my_bookings._get_own_record, pets._get_own_pet, rating._owns_record, handle_callback() (+8 more)
 
 ### Community 17 - "Вебхук Altegio і телефон"
 Cohesion: 0.17
-Nodes (20): normalize_phone(), get_client_by_phone(), Знайти клієнта за телефоном (формат +380XXXXXXXXX). Для матчингу Altegio-вебхукі, Привести телефон до формату +380XXXXXXXXX. None, якщо номер не схожий на українс, Webhook Reconciliation of Bookings Made Outside the Bot, _handle (webhook payload dispatch), _format_dt(), _handle() (+12 more)
+Nodes (16): my_bookings._do_cancel, _handle (webhook payload dispatch), _format_dt(), _handle(), _location_name(), _parse_kyiv(), process_event(), datetime (+8 more)
 
 ### Community 18 - "Диспетчер сповіщень"
-Cohesion: 0.16
-Nodes (20): _clear_booking_state (drop stale user_data booking), _handle_thanks_rating (rating keyboard after visit), _HANDLERS (notification type -> handler registry), _clear_booking_state(), get_due_notifications(), _handle_booking_incomplete(), _handle_form_incomplete(), _handle_rebook_nudge() (+12 more)
+Cohesion: 0.10
+Nodes (29): has_tracked_record_since(), Чи з'явився активний запис клієнта після вказаного часу (перевірка, чи флоу запи, clients.rebook_promo_dismissed_record_id column, _clear_booking_state (drop stale user_data booking), _handle_thanks_rating (rating keyboard after visit), _HANDLERS (notification type -> handler registry), _clear_booking_state(), get_due_notifications() (+21 more)
 
 ### Community 19 - "Спека AI-консультанта"
 Cohesion: 0.10
 Nodes (19): AI-консультант на живих даних салону + захист від ін'єкцій, Видимість спрацювань, Вичерпана квота Groq, Вміст контексту, Головний інваріант: у промпт не потрапляє текст, написаний клієнтом, Дайджест постраждалих клієнтів о 18:30, Деградація, Детерміновані перевірки відповіді (+11 more)
 
 ### Community 20 - "Код-фрагменти бекапу"
-Cohesion: 0.12
-Nodes (18): code:block10 (BACKUP_CHAT_ID=651807767), code:python (import json), code:python (BACKUP_HOUR = 7  # Київ; не збігається з 9 і 10, коли cron ш), code:python (def saturday_of_week(day: date) -> date:), code:bash (git add config.py services/backup.py services/test_backup.py), code:python (class BackupDueTest(unittest.TestCase):), code:python (from datetime import date, datetime), code:python (# Куди слати тижневий бекап Supabase. Особистий чат власника) (+10 more)
+Cohesion: 0.15
+Nodes (19): code:block10 (BACKUP_CHAT_ID=651807767), code:python (import json), code:python (BACKUP_HOUR = 7  # Київ; не збігається з 9 і 10, коли cron ш), code:python (def saturday_of_week(day: date) -> date:), code:bash (git add config.py services/backup.py services/test_backup.py), code:python (class BackupDueTest(unittest.TestCase):), code:python (from datetime import date, datetime), code:python (# Куди слати тижневий бекап Supabase. Особистий чат власника) (+11 more)
 
 ### Community 21 - "Тижневий бекап у Telegram"
 Cohesion: 0.15
-Nodes (19): No client PII in logs or the admin group, BACKUP_CHAT_ID (owner private chat for DB dump), Risk 10: weekly dump to Telegram instead of local disk, Plan: Weekly Supabase Backup to Telegram, backup_attempt Mark: Two Attempts per Week, Final Review Fixes: feature/supabase-weekly-backup, Progress: Weekly Supabase Backup Feature, Зібрати дамп і надіслати файлом власнику. True — Telegram підтвердив доставку. (+11 more)
-
-### Community 22 - "Помилки Altegio і кеш"
-Cohesion: 0.15
-Nodes (5): Exception, AltegioError, Помилка звернення до Altegio API., CatalogCacheTest, ForUserTest
+Nodes (20): Plan: Weekly Supabase Backup to Telegram, backup_attempt Mark: Two Attempts per Week, Final Review Fixes: feature/supabase-weekly-backup, Progress: AI Grounded Context Feature, Progress: Weekly Supabase Backup Feature, Separate BACKUP_CHAT_ID Recipient, Explicit BACKUP_TABLES Registry, Keyset Pagination of Table Reads (+12 more)
 
 ### Community 23 - "TDD-цикл ai_context"
-Cohesion: 0.14
-Nodes (17): code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:block4 (test_branches_and_contacts_present ... ok), code:block5 (9069df9 Додати збірку контексту салону для AI без тексту клі), code:block7 (Ran 8 tests in 0.001s), GREEN (Step 4 — після реалізації), GREEN (після реалізації), RED (до реалізації), Self-review (+9 more)
+Cohesion: 0.18
+Nodes (10): code:block5 (9069df9 Додати збірку контексту салону для AI без тексту клі), code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:block7 (Ran 8 tests in 0.001s), Self-review, Step 0 — звірка хелперів `handlers/booking.py`, Task 1 Report: Чиста збірка блоку контексту для AI, Виправлення після рев'ю (чорний список → маркер блоку), Коміт (+2 more)
 
 ### Community 24 - "Звіт про перевірку сум"
-Cohesion: 0.11
-Nodes (17): code:block6 (Ran 15 tests in 0.000s), `config.py`, `.env` (локально, у git не потрапляє — `.gitignore:2 *.env`), Fix-round (рев'ю Task 3), Self-review, `services/backup.py`, Task 3 Report: Перевірка сум і посилань у відповіді AI, Змінені файли (+9 more)
+Cohesion: 0.20
+Nodes (9): Self-review, Task 3 Report: Перевірка сум і посилань у відповіді AI, Змінені файли, Мутаційна перевірка гейтування, Покрито (тестами або ручною перевіркою), Свідомо не покрито, Формати сум: покрито vs свідомо не покрито, Що тестував і результати (+1 more)
 
 ### Community 25 - "Сповіщення про візити"
-Cohesion: 0.17
-Nodes (16): create_notification(), Запланувати сповіщення (send_after — ISO timestamp)., Migration 007: visit notifications (ends_at + altegio_record_id FK), Idempotent Visit Notification (Re)Scheduling, Live Slot Re-Check Before create_record, cancel_visit_notifications(), datetime, int (+8 more)
+Cohesion: 0.12
+Nodes (17): ALTEGIO_BOOKING_WIDGET_URL (external booking widget), create_notification(), delete_pending_notifications_for_record(), has_pending_notification(), bool, Запланувати сповіщення (send_after — ISO timestamp)., Видалити pending-сповіщення заданих типів для конкретного запису (Фаза 4: remind, Чи є вже заплановане (pending) сповіщення цього типу для клієнта. (+9 more)
 
 ### Community 26 - "Altegio як джерело правди"
 Cohesion: 0.14
-Nodes (16): Altegio owns records/prices; Supabase only what Altegio lacks, db/schema.sql (Supabase schema), Live Altegio Context Injected into Prompt, Altegio as Single Source of Truth, Bot as Telegram Interface to Altegio, AI Chat History Moved to chat_messages Table, Groq Function Calling over Altegio, No Admin Interface Inside the Bot (+8 more)
+Nodes (20): Altegio owns records/prices; Supabase only what Altegio lacks, db/schema.sql (Supabase schema), Live Altegio Context Injected into Prompt, Altegio as Single Source of Truth, Bot as Telegram Interface to Altegio, AI Chat History Moved to chat_messages Table, Groq Function Calling over Altegio, History Pagination Five Visits Per Page (+12 more)
 
 ### Community 27 - "Keyset-пагінація і TDD"
-Cohesion: 0.19
-Nodes (16): 1. Keyset-пагінація замість offset (Important), code:block1 (venv/bin/python -m unittest services.test_ai_context -v), code:block10 (Ran 19 tests in 0.005s — OK), code:bash (venv/bin/python -c "), code:block3 (ERROR: test_second_call_within_ttl_does_not_refetch), code:block6 (Ran 19 tests in 0.004s — OK), code:bash (env -u ALTEGIO_COMPANY_IDS_Zam -u ALTEGIO_COMPANY_IDS_Tern -), GREEN (Step 5) (+8 more)
+Cohesion: 0.21
+Nodes (13): 1. Keyset-пагінація замість offset (Important), code:block1 (venv/bin/python -m unittest services.test_ai_context -v), code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:block3 (ERROR: test_second_call_within_ttl_does_not_refetch), code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:bash (env -u ALTEGIO_COMPANY_IDS_Zam -u ALTEGIO_COMPANY_IDS_Tern -), GREEN (Step 5), GREEN (після реалізації) (+5 more)
 
 ### Community 28 - "AI-чат і меню"
-Cohesion: 0.16
-Nodes (14): handle_message(), DEFAULT_TYPE, Update, AI-чат: все, що не кнопки меню і не команди, йде в Groq., Обробник текстових повідомлень поза діалогами (меню або AI)., BTN_HISTORY menu button, is_menu_button(), MAIN_MENU reply keyboard (+6 more)
+Cohesion: 0.18
+Nodes (16): bool, handle_message(), DEFAULT_TYPE, Update, AI-чат: все, що не кнопки меню і не команди, йде в Groq., Обробник текстових повідомлень поза діалогами (меню або AI)., handle_menu_button(), is_menu_button() (+8 more)
 
 ### Community 29 - "Промпт і структура контексту"
-Cohesion: 0.17
-Nodes (16): HELP_PHONE (salon phone number), SYSTEM_PROMPT (AI consultant role + price rules), NamedTuple, Phase 8 item 1: grounded AI context with output guards, Task 3 Brief: Amount and Link Checks in AI Reply, Task 3 Report: Amount and Link Checks in AI Reply, AiContext, Блок для системного промпта + що з нього дозволено називати.      amounts — усі (+8 more)
+Cohesion: 0.13
+Nodes (21): HELP_PHONE (salon phone number), SYSTEM_PROMPT (AI consultant role + price rules), Match, Phase 8 item 1: grounded AI context with output guards, Task 3 Brief: Amount and Link Checks in AI Reply, Task 3 Report: Amount and Link Checks in AI Reply, amounts_in(), _is_allowed_url() (+13 more)
 
 ### Community 31 - "Тести фолбеку й спрацювань"
-Cohesion: 0.14
+Cohesion: 0.12
 Nodes (4): FallbackTest, GuardTripTest, QuotaStateTest, RateLimitTest
 
 ### Community 32 - "Фікси рев'ю бекапу"
@@ -299,92 +314,84 @@ Cohesion: 0.13
 Nodes (14): 1. Стійкий збій ретраївся на кожному тику (головне), 2. Незаданий `BACKUP_CHAT_ID` — тихий провал, 3. Підпис викидав таблиці з нулем рядків, 4. Дві дрібниці, code:block1 (Ran 28 tests in 0.073s), code:block2 (ERROR: test_not_due_twice_in_same_day_after_failed_attempt), code:block3 (Ran 28 tests in 0.075s), code:block4 (Ran 55 tests in 1.720s) (+6 more)
 
 ### Community 33 - "Правила запису й породи"
-Cohesion: 0.22
-Nodes (14): 24-Hour Reschedule/Cancel Rule, Breed-Based Service Matching, Redesign to External Altegio Booking Widget, Generic Weight-Based Fallback and Full Price List, Help Phone as Plain Text (tel: URLs Rejected), Phase 11 — Nearest Slots for a Specific Groomer, Phase 2 — Online Grooming Booking, Phase 3 — Booking Management (reschedule/cancel/repeat) (+6 more)
+Cohesion: 0.18
+Nodes (16): 24-Hour Reschedule/Cancel Rule, Breed-Based Service Matching, Redesign to External Altegio Booking Widget, Generic Weight-Based Fallback and Full Price List, Help Phone as Plain Text (tel: URLs Rejected), Phase 11 — Nearest Slots for a Specific Groomer, Phase 2 — Online Grooming Booking, Phase 3 — Booking Management (reschedule/cancel/repeat) (+8 more)
 
 ### Community 34 - "Реєстрація handler-ів і стан"
 Cohesion: 0.20
-Nodes (14): handlers/setup.py (single handler registration point), Client Lookup in Altegio by Phone Across Branches, Flow State Encoded in callback_data, Daily Task Gating via cron_state, Mr.Snoopy Grooming Bot Development Roadmap, draft_json Registration Progress Persistence, Inline Buttons plus ConversationHandler UI Pattern, Multi-Branch Visit Merge and Sorting (+6 more)
+Nodes (14): Daily Task Gating via cron_state, Deferred Next-Visit-in-N-Weeks Estimate, Mr.Snoopy Grooming Bot Development Roadmap, Per-Branch Error Isolation Contract, Pet Birthday Greeting, Phase 10: vaccination dates from Altegio comments, Phase 7 — Personal Offers and Automation, REBOOK_DEFAULT_WEEKS Fixed Constant (+6 more)
 
 ### Community 35 - "План тижневого бекапу"
-Cohesion: 0.14
-Nodes (12): code:markdown (| `services/backup.py` | Тижневий дамп усіх таблиць Supabase), code:block21 (BACKUP_CHAT_ID=... # особистий чат власника для тижневого бе), code:markdown (- Після додавання нової таблиці в схему: внести її в `BACKUP), code:markdown (| 10 | Бекапи | На free tier Supabase немає автоматичних бек), code:markdown (| 10 | Бекапи | ✅ Закрито 2026-08-18: `services/backup.py` щ), code:bash (cd ~/MRS_elegram_bot && python3 -c "from services import bac), code:bash (git push -u origin feature/supabase-weekly-backup), File Structure (+4 more)
+Cohesion: 0.18
+Nodes (10): code:markdown (| `services/backup.py` | Тижневий дамп усіх таблиць Supabase), code:block21 (BACKUP_CHAT_ID=... # особистий чат власника для тижневого бе), code:markdown (- Після додавання нової таблиці в схему: внести її в `BACKUP), code:markdown (| 10 | Бекапи | На free tier Supabase немає автоматичних бек), code:markdown (| 10 | Бекапи | ✅ Закрито 2026-08-18: `services/backup.py` щ), code:bash (git add CLAUDE.md PLAN.md), code:bash (cd ~/MRS_elegram_bot && python3 -c "from services import bac), code:bash (cd ~/MRS_elegram_bot && python3 -c ") (+2 more)
 
 ### Community 36 - "Каденція cron-задач"
-Cohesion: 0.21
-Nodes (13): Cron tasks gated by cron_state, marked only after confirmed result, date, is_backup_due(), Субота тижня, до якого належить день (тиждень від понеділка)., Чи пора робити тижневий бекап. Уся каденція — тут, у диспетчері дат немає., saturday_of_week(), _run_daily_tasks (cron_state gated daily/weekly jobs), is_quota_digest_due() (+5 more)
+Cohesion: 0.13
+Nodes (20): Cron tasks gated by cron_state, marked only after confirmed result, date, Task 7 Brief: Groq Quota Digest at 18:30, Task 7 Report: Groq Quota Digest at 18:30, _fetch_table(), is_backup_due(), date, datetime (+12 more)
 
 ### Community 37 - "Щоденна звірка з Altegio"
-Cohesion: 0.14
-Nodes (10): Позначити статус запису (напр. cancelled при скасуванні в Altegio)., update_tracked_record_status(), my_bookings._do_cancel, bool, Щоденна звірка записів Altegio з локальним кешем tracked_records.  Вебхуки (serv, Пройтись по всіх філіях і звірити записи на найближчі RECONCILE_WINDOW_DAYS днів, reconcile_upcoming_records(), Single idempotent record-ingest path for webhook and reconcile (+2 more)
+Cohesion: 0.18
+Nodes (7): bool, Щоденна звірка записів Altegio з локальним кешем tracked_records.  Вебхуки (serv, Пройтись по всіх філіях і звірити записи на найближчі RECONCILE_WINDOW_DAYS днів, reconcile_upcoming_records(), Single idempotent record-ingest path for webhook and reconcile, reconcile_upcoming_records(): запис, що зник з Altegio (скасований, але Altegio, ReconcileTest
 
 ### Community 39 - "Дизайн бекапу"
 Cohesion: 0.14
 Nodes (13): code:json ({), Коли запускається, Критерії успіху, Куди надсилається, Обробка помилок, Обсяг дампа, Проблема, Рішення (+5 more)
 
 ### Community 40 - "Відправка документів у Telegram"
-Cohesion: 0.19
-Nodes (11): code:python ("""send_telegram_document(): файл іде в sendDocument як mult), code:bash (git add services/notifications.py services/test_notification), code:bash (git add services/ai_context.py services/test_ai_context.py), Task 1: Чиста збірка блоку контексту, code:python (# services/test_ai_context.py), code:python (# services/ai_context.py), code:bash (git add services/ai_context.py services/test_ai_context.py), Task 1: Транспорт файла до Telegram (+3 more)
+Cohesion: 0.23
+Nodes (11): code:python ("""send_telegram_document(): файл іде в sendDocument як mult), code:python (def send_telegram_document(), code:bash (git add services/notifications.py services/test_notification), Task 1: Транспорт файла до Telegram, code:python (# services/ai_context.py), code:bash (git add services/ai_context.py services/test_ai_context.py), Task 1: Транспорт файла до Telegram, Task 1: Чиста збірка блоку контексту (+3 more)
 
 ### Community 41 - "Тести каденції бекапу"
-Cohesion: 0.24
-Nodes (5): datetime, BackupDueTest, Субота — штатний день; неділя — підхват, якщо cron проспав суботу., Стійкий збій дає одну спробу на добу, а не одну на кожен тик cron.          Позн, Підхват у неділю живий: позначка спроби добова, а не тижнева.
+Cohesion: 0.20
+Nodes (6): datetime, Фаза 7, п.1: день народження улюбленця — щоденне привітання (без знижки, поки що, BackupDueTest, Субота — штатний день; неділя — підхват, якщо cron проспав суботу., Стійкий збій дає одну спробу на добу, а не одну на кожен тик cron.          Позн, Підхват у неділю живий: позначка спроби добова, а не тижнева.
 
 ### Community 42 - "Тести клієнта Groq"
-Cohesion: 0.23
-Nodes (4): RateLimitError, _completion(), GroqClientTest, str
+Cohesion: 0.24
+Nodes (5): RateLimitError, _completion(), GroqClientTest, str, _rate_limit_error()
 
 ### Community 43 - "Задача лімітів і квоти"
-Cohesion: 0.19
-Nodes (12): code:python (class SchedulerWiringTest(unittest.TestCase):), code:python (from services import altegio_reconcile, backup, birthday, no), code:python (# Єдина задача не з добовою, а з тижневою каденцією, тому вл), code:python (# додати в services/test_ai_guard.py), code:python (# services/ai_guard.py — додати), code:bash (git add services/ai_guard.py services/test_ai_guard.py), Task 4: Ліміт повідомлень, лічильник спрацювань і стан дайджесту, Task 4: Підключення до cron-диспетчера (+4 more)
+Cohesion: 0.14
+Nodes (18): code:python (class SchedulerWiringTest(unittest.TestCase):), code:python (from services import altegio_reconcile, backup, birthday, no), code:python (# Єдина задача не з добовою, а з тижневою каденцією, тому вл), code:bash (git add services/scheduler.py services/test_backup.py), Task 4: Підключення до cron-диспетчера, code:python (# додати в services/test_ai_guard.py), code:python (# services/ai_guard.py — додати), code:bash (git add services/ai_guard.py services/test_ai_guard.py) (+10 more)
 
 ### Community 44 - "Звіт про склейку AI-флоу"
-Cohesion: 0.15
-Nodes (12): code:block1 ($ venv/bin/python -c "import handlers.ai_chat, handlers.setu), code:block3 (dad314e Провести AI-чат через контекст і запобіжники), Self-review, Step 2: імпорт, Step 3: юніт-тести services/, Task 6 Report: Склеїти AI-флоу в `handlers/ai_chat.py`, Зауваження, Збіг з брифом і `services/` (+4 more)
+Cohesion: 0.14
+Nodes (13): code:block1 ($ venv/bin/python -c "import handlers.ai_chat, handlers.setu), code:block2 ($ venv/bin/python -m unittest services.test_ai_context servi), code:block3 (dad314e Провести AI-чат через контекст і запобіжники), Self-review, Step 2: імпорт, Step 3: юніт-тести services/, Task 6 Report: Склеїти AI-флоу в `handlers/ai_chat.py`, Зауваження (+5 more)
 
 ### Community 45 - "Клієнт Groq та історія"
-Cohesion: 0.19
-Nodes (12): config.SYSTEM_PROMPT, Отримати відповідь від Groq для повідомлення користувача., Відповідь Groq. RateLimitError (429) пробрасується назовні — викликач     відпов, Очистити історію чату для користувача., chat_histories (in-memory per-user dict), clear_chat_history(), get_response(), int (+4 more)
-
-### Community 46 - "Білий список посилань"
-Cohesion: 0.15
-Nodes (6): Outbound traffic only via whitelisted HTTPS proxy, _is_allowed_url (netloc whitelist, no nested scheme), Прибрати посилання поза білим списком: модель не має інтернету, але текст     із, strip_foreign_links(), LinksTest, Outbound Link Whitelist
+Cohesion: 0.21
+Nodes (14): config.SYSTEM_PROMPT, clear_chat_history(), get_response(), Отримати відповідь від Groq для повідомлення користувача., Відповідь Groq. RateLimitError (429) пробрасується назовні — викликач     відпов, Очистити історію чату для користувача., chat_histories (in-memory per-user dict), clear_chat_history() (+6 more)
 
 ### Community 47 - "Flask-маршрути вебхука"
-Cohesion: 0.17
-Nodes (12): cron(), index(), ensure_initialized() з повторами - проксі PythonAnywhere інколи віддає 503., Головна сторінка - перевірка що бот працює., Обробник webhook від Telegram., Викликається зовнішнім планувальником (cron-job.org / PythonAnywhere Scheduled T, webhook(), cron() route (/cron/<CRON_SECRET>) (+4 more)
+Cohesion: 0.09
+Nodes (37): Application, main(), Запуск бота (polling, для локальної розробки)., altegio_webhook_route(), cron(), ensure_initialized(), ensure_initialized_with_retries(), index() (+29 more)
 
 ### Community 48 - "Історія візитів і нагадування"
-Cohesion: 0.24
-Nodes (12): GOOGLE_MAPS_REVIEW_URLS (per-branch review links), Altegio Fixed +03:00 Offset Timezone Bug, Visit-Happened Attendance Filter, Daily Altegio Reconciliation of Upcoming Records, History Pagination Five Visits Per Page, History Cached in user_data to Limit Altegio Calls, Phase 4 — Automatic Reminders and Ratings, Phase 5 — Grooming Visit History (+4 more)
+Cohesion: 0.32
+Nodes (8): GOOGLE_MAPS_REVIEW_URLS (per-branch review links), Altegio Fixed +03:00 Offset Timezone Bug, Idempotent Visit Notification (Re)Scheduling, Phase 4 — Automatic Reminders and Ratings, rebook_nudge Return-Visit Nudge, reminder_2h Pre-Visit Reminder, Live Slot Re-Check Before create_record, services/test_visit_history.py (visit history unit tests)
 
 ### Community 49 - "Звіт про дайджест квоти"
-Cohesion: 0.17
-Nodes (12): code:block2 (ERROR: ... AttributeError: module 'services.scheduler' has n), code:block4 (test_due_again_next_day ... ok), GREEN, RED, Self-review, Task 7 Report: Дайджест про вичерпану квоту Groq о 18:30, TDD Evidence, Змінені файли (+4 more)
-
-### Community 50 - "Дні народження улюбленців"
-Cohesion: 0.17
-Nodes (8): get_pets_with_birth_date(), Усі улюбленці з відомою датою народження (щоденна перевірка днів народження, Фаз, bool, Фаза 7, п.1: день народження улюбленця — щоденне привітання (без знижки, поки що, Привітати клієнтів, чий улюбленець народився сьогодні (без урахування року)., send_birthday_greetings(), BirthdayTest, send_birthday_greetings(): улюбленець з днем народження сьогодні (інший рік) отр
+Cohesion: 0.25
+Nodes (7): Self-review, Task 7 Report: Дайджест про вичерпану квоту Groq о 18:30, Змінені файли, Коміт, Сумніви й зауваження, Що реалізовано, Що тестували й результати
 
 ### Community 51 - "Дамп таблиць Supabase"
-Cohesion: 0.24
-Nodes (11): New tables must join BACKUP_TABLES with a unique NOT NULL sort key, Risk 5: PythonAnywhere free tier HTTPS proxy whitelist, _fetch_table (keyset pagination over PostgREST), BACKUP_TABLES (table -> unique sort key), build_dump(), _fetch_table(), str, Тижневий бекап Supabase: повний дамп таблиць одним JSON-файлом у Telegram.  На б (+3 more)
+Cohesion: 0.21
+Nodes (14): New tables must join BACKUP_TABLES with a unique NOT NULL sort key, No client PII in logs or the admin group, BACKUP_CHAT_ID (owner private chat for DB dump), Risk 10: weekly dump to Telegram instead of local disk, Risk 5: PythonAnywhere free tier HTTPS proxy whitelist, _fetch_table (keyset pagination over PostgREST), BACKUP_TABLES (table -> unique sort key), build_dump() (+6 more)
 
 ### Community 52 - "Код-фрагменти задач"
-Cohesion: 0.21
-Nodes (11): code:python ("""build_dump(): усі таблиці в дампі, великі таблиці читають), code:python ("""Тижневий бекап Supabase: повний дамп таблиць одним JSON-ф), code:python (# додати в services/test_ai_context.py), code:python (# services/ai_context.py — додати до імпортів), code:bash (git add services/ai_context.py services/test_ai_context.py), Task 2: Збірка дампа з Supabase, Task 2: Кеш каталогу, довідник філій і оркестратор, Знахідки самоперевірки (+3 more)
+Cohesion: 0.27
+Nodes (9): code:python (# додати в services/test_ai_context.py), code:python (# services/ai_context.py — додати до імпортів), code:bash (git add services/ai_context.py services/test_ai_context.py), Task 2: Збірка дампа з Supabase, Task 2: Кеш каталогу, довідник філій і оркестратор, Знахідки самоперевірки, Проблеми / сумніви, Що тестував і результати (+1 more)
 
 ### Community 53 - "Показ історії візитів"
-Cohesion: 0.29
-Nodes (11): _format_visit(), handle_callback(), DEFAULT_TYPE, int, str, Update, Історія візитів («✂️ Історія», Фаза 5): минулі візити клієнта з Altegio.  Читанн, Кнопка меню «✂️ Історія». (+3 more)
+Cohesion: 0.16
+Nodes (14): _format_visit(), handle_callback(), DEFAULT_TYPE, int, str, Update, Історія візитів («✂️ Історія», Фаза 5): минулі візити клієнта з Altegio.  Читанн, Кнопка меню «✂️ Історія». (+6 more)
 
 ### Community 54 - "Конфігурація хуків"
 Cohesion: 0.18
 Nodes (10): hooks, PostToolUse, PreToolUse, SessionStart, permissions, allow, defaultMode, deny (+2 more)
 
 ### Community 55 - "Ініціалізація event loop"
-Cohesion: 0.24
-Nodes (10): altegio_webhook_route(), Приймає події від Altegio (запис створено/змінено/видалено)., Запустити event loop в окремому потоці., Ініціалізувати Telegram Application., Перевірити чи event loop живий і працює., Переконатись що бот ініціалізований. Перезапускає якщо event loop помер., ensure_initialized(), initialize_application() (+2 more)
+Cohesion: 0.16
+Nodes (18): parse_date(), get_clients_with_altegio_link(), Клієнти, прив'язані до Altegio (для щоденної синхронізації вакцинації, Фаза 10)., bool, date, Розібрати дату у форматі ДД.ММ.РРРР. None, якщо формат/значення некоректні., clients.vaccine_due_date column, clients.vaccine_notified_due_date column (+10 more)
 
 ### Community 56 - "Зовнішні API і фази плану"
 Cohesion: 0.27
@@ -392,30 +399,30 @@ Nodes (11): Altegio Business API, Altegio Online Booking API, External Cron Hitt
 
 ### Community 57 - "TDD-докази ai_guard"
 Cohesion: 0.24
-Nodes (11): RED (Step 2 — до реалізації), Додаткова перевірка поза тестами (одноразовий скрипт, не комітився), Що тестував і результати, code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block2 (ImportError: cannot import name 'ai_guard' from 'services' (), code:block4 (Ran 10 tests in 0.000s), GREEN, GREEN (після реалізації) (+3 more)
+Nodes (11): Додаткова перевірка поза тестами (одноразовий скрипт, не комітився), Що тестував і результати, code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block2 (ImportError: cannot import name 'ai_guard' from 'services' (), code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block4 (Ran 10 tests in 0.000s), GREEN, GREEN (після реалізації) (+3 more)
 
 ### Community 58 - "Тести лімітів ai_guard"
-Cohesion: 0.27
-Nodes (11): code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block2 (ERROR: test_allows_up_to_limit (services.test_ai_guard.RateL), code:block4 (Ran 23 tests in 0.001s), code:block8 (FAIL: test_reset_state_clears_all), GREEN, GREEN (після реалізації), RED, RED (до реалізації, лише тести в `test_backup.py`) (+3 more)
+Cohesion: 0.19
+Nodes (14): code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block2 (ERROR: test_allows_up_to_limit (services.test_ai_guard.RateL), code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block4 (Ran 23 tests in 0.001s), code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block6 (Ran 23 tests in 0.001s), GREEN, GREEN (після реалізації) (+6 more)
 
 ### Community 59 - "Промо повторного запису"
-Cohesion: 0.22
-Nodes (10): get_active_tracked_records_with_ends_at(), Активні записи з відомим ends_at (перевірка прострочених rebook, Фаза 7).      Б, last_promo_at cooldown as anti-spam pacing, _latest_per_client(), bool, Фаза 7, п.3: "Маємо вікно завтра" — щоденна перевірка вільних місць для клієнтів, Повертає True лише якщо жодна філія/клієнт не впали з помилкою (той самий     ко, send_rebook_promos() (+2 more)
+Cohesion: 0.13
+Nodes (17): get_active_tracked_records_with_ends_at(), get_client_by_id(), get_pets_with_birth_date(), Активні записи з відомим ends_at (перевірка прострочених rebook, Фаза 7).      Б, Знайти клієнта за внутрішнім id., Усі улюбленці з відомою датою народження (щоденна перевірка днів народження, Фаз, bool, Привітати клієнтів, чий улюбленець народився сьогодні (без урахування року). (+9 more)
 
 ### Community 60 - "test_rebook_promo.py"
 Cohesion: 0.29
 Nodes (10): _iso(), int, str, send_rebook_promos(): клієнт з простроченим (6+ тижнів) останнім візитом і вільн, test_cooldown_active_skipped(), test_dismissed_record_skipped(), test_no_free_slot_tomorrow_skipped(), test_one_client_db_failure_does_not_block_others() (+2 more)
 
 ### Community 61 - "register_handlers"
-Cohesion: 0.29
-Nodes (8): Application, main(), Запуск бота (polling, для локальної розробки)., post_init(), Єдина точка реєстрації всіх handler-ів (webhook_bot.py і bot.py)., Глобальний дефолт кнопки «Меню» (/start, /cancel) для нових чатів.      Під час, register_handlers(), Query memory: why register_handlers connects Bot Entrypoints community to 10 others
+Cohesion: 0.25
+Nodes (16): Visit time comes from the naive `date` field, never `datetime`, resolve_altegio_client_id(), Створити або оновити кеш запису (fields повинні містити altegio_record_id)., upsert_tracked_record(), booking._confirm_booking, Знайти або створити Altegio-клієнта для обраної локації.      clients.altegio_co, my_bookings._confirm_reschedule, nearest_slots._confirm (+8 more)
 
 ### Community 62 - "test_rebook_promo.py"
-Cohesion: 0.27
-Nodes (9): IDOR protection for record_id in callback_data, int, str, handle_callback(): rp_dismiss записує rebook_promo_dismissed_record_id; чужий ca, RebookPromoCallbackTest, test_db_failure_on_dismiss_shows_retry_message(), test_dismiss_marks_client(), test_foreign_record_rejected() (+1 more)
+Cohesion: 0.36
+Nodes (7): int, str, handle_callback(): rp_dismiss записує rebook_promo_dismissed_record_id; чужий ca, test_db_failure_on_dismiss_shows_retry_message(), test_dismiss_marks_client(), test_foreign_record_rejected(), _update()
 
 ### Community 63 - "kyiv"
-Cohesion: 0.33
+Cohesion: 0.31
 Nodes (4): DigestDueTest, kyiv(), datetime, int
 
 ### Community 64 - "Виправлення знахідок рев'ю"
@@ -423,40 +430,40 @@ Cohesion: 0.22
 Nodes (10): 2. Прибрано мертвий логер (Important), 3. Комент біля `PAGE_SIZE` (Minor), 4. Запінено склад таблиць і формат `created_at` (Minor), Виправлення знахідок рев'ю, Виправлення: умова виходу з пагінації, Оновлення наявного тесту пагінації, Оновлення решти тестів, Сумніви (+2 more)
 
 ### Community 65 - "test_visit_history.py"
-Cohesion: 0.29
-Nodes (8): datetime, int, get_past_visits(): що потрапляє в історію, як зливаються філії і що буває при зб, _record(), test_keeps_only_past_visits_that_happened(), test_merges_branches_newest_first(), test_raises_when_no_branch_answered(), test_sums_cost_of_all_services_in_visit()
+Cohesion: 0.23
+Nodes (10): datetime, int, get_past_visits(): що потрапляє в історію, як зливаються філії і що буває при зб, _record(), test_keeps_only_past_visits_that_happened(), test_merges_branches_newest_first(), test_raises_when_no_branch_answered(), test_sums_cost_of_all_services_in_visit() (+2 more)
 
 ### Community 66 - "test_altegio_webhook.py"
-Cohesion: 0.33
-Nodes (7): _kyiv_label(), datetime, str, process_record(): підтвердження клієнту (не слати на вже скасований запис) і час, test_new_active_record_sends_confirmation(), test_new_cancelled_record_sends_no_confirmation(), test_winter_record_keeps_salon_wall_clock_time()
+Cohesion: 0.31
+Nodes (8): _kyiv_label(), ProcessRecordTest, datetime, str, process_record(): підтвердження клієнту (не слати на вже скасований запис) і час, test_new_active_record_sends_confirmation(), test_new_cancelled_record_sends_no_confirmation(), test_winter_record_keeps_salon_wall_clock_time()
 
 ### Community 67 - "💡 Ідеї для покращення бота Mr.Snoopy Gro…"
 Cohesion: 0.25
 Nodes (7): 📍 Кнопки з локаціями салонів, 🔔 Нагадування про запис, 📸 Обробка фото, 📊 Статистика популярних запитань, 💬 Швидкі відповіді (FAQ кнопки), 💡 Ідеї для покращення бота Mr.Snoopy Grooming, 📅 Інтеграція з Google Calendar
 
 ### Community 68 - "WEBHOOK_SETUP.md (deployment guide"
-Cohesion: 0.29
-Nodes (8): main() (polling entrypoint), Python dependencies list, python-3.11.0 runtime pin, Flask app instance, webhook() route (/{TELEGRAM_TOKEN}), WEBHOOK_SETUP.md (deployment guide), Webhook-over-polling rationale (PythonAnywhere free tier blocks polling), application (WSGI entry, binds webhook_bot.app)
+Cohesion: 0.15
+Nodes (18): main() (polling entrypoint), check_webhook(), get_webhook_info(), Встановити webhook URL для бота., Отримати інформацію про поточний webhook. Повертає поточний url (None при помилц, --check: лише перевірити стан (нічого не змінює).      Локальний `bot.py` (polli, set_webhook(), Python dependencies list (+10 more)
 
 ### Community 69 - "set_webhook.py"
-Cohesion: 0.32
-Nodes (7): Встановити webhook URL для бота., Отримати інформацію про поточний webhook. Повертає поточний url (None при помилц, --check: лише перевірити стан (нічого не змінює).      Локальний `bot.py` (polli, check_webhook(), get_webhook_info(), str, WEBHOOK_URL constant
+Cohesion: 0.21
+Nodes (12): booking._ask_date, booking._ask_time, my_bookings._ask_reschedule_date, nearest_slots._search_nearest_slots, Sequential Scan for Nearest Free Slots, seance_length Available Only from book_times Slot, _request (Altegio HTTP core), get_available_dates() (+4 more)
 
 ### Community 70 - "booking_incomplete Admin Alert"
-Cohesion: 0.32
-Nodes (8): Admin Notifications into a Single Group Topic, booking_incomplete Admin Alert, Callback Data Ownership Check Against Forged Callbacks, form_incomplete Admin Alert, Google Maps Review Prompt for Five-Star Ratings, Notification Type Taxonomy, Single-Question Groomer Rating Flow, thanks_rating Post-Visit Thank-You Prompt
+Cohesion: 0.18
+Nodes (15): handlers/setup.py (single handler registration point), Admin Notifications into a Single Group Topic, Client Lookup in Altegio by Phone Across Branches, booking_incomplete Admin Alert, Callback Data Ownership Check Against Forged Callbacks, Flow State Encoded in callback_data, draft_json Registration Progress Persistence, form_incomplete Admin Alert (+7 more)
 
 ### Community 71 - "rebook_nudge Return-Visit Nudge"
-Cohesion: 0.29
-Nodes (8): Deferred Next-Visit-in-N-Weeks Estimate, Per-Branch Error Isolation Contract, Pet Birthday Greeting, REBOOK_DEFAULT_WEEKS Fixed Constant, rebook_nudge Return-Visit Nudge, Two-Layer Anti-Spam for Free-Slot Promo, services/birthday.py (pet birthday greetings), services/rebook_promo.py (free-slot promo batch)
+Cohesion: 0.24
+Nodes (11): code:python (# services/test_groq_client.py), code:bash (git push -u origin feature/supabase-weekly-backup), code:python (SYSTEM_PROMPT = """), code:python (from groq import Groq, RateLimitError), code:python (import logging), code:bash (git add config.py groq_client.py services/test_groq_client.p), code:markdown (| 10 | Бекапи | ✅ Закрито 2026-08-18: `services/backup.py` щ), code:bash (cd ~/MRS_elegram_bot && python3 -c "from services import bac) (+3 more)
 
 ### Community 72 - "(venv/bin/python -m unittest services.te…"
-Cohesion: 0.39
-Nodes (8): code:bash (venv/bin/python -m unittest services.test_groq_client -v), code:block2 (TypeError: get_response() takes 2 positional arguments but 3), code:block4 (test_context_block_goes_into_system_message ... ok), GREEN, RED, TDD Evidence, Тести, Що змінено в `CLAUDE.md`
+Cohesion: 0.25
+Nodes (11): code:bash (venv/bin/python -m unittest services.test_groq_client -v), code:block2 (TypeError: get_response() takes 2 positional arguments but 3), code:bash (venv/bin/python -m unittest services.test_groq_client -v), code:block4 (test_context_block_goes_into_system_message ... ok), code:bash (venv/bin/python -m unittest services.test_groq_client -v), code:block7 (test_context_block_goes_into_system_message ... ok), GREEN, RED (+3 more)
 
 ### Community 73 - "Task 5 Report: Промпт і клієнт Groq"
-Cohesion: 0.29
-Nodes (8): Що виправлено, Self-review, Task 5 Report: Промпт і клієнт Groq, Змінені файли, Коміт, Фікс-раунд (рев'ю), Що змінено, Що реалізовано
+Cohesion: 0.14
+Nodes (15): Проблеми / сумніви, code:python (response = mock.Mock(status_code=429, headers={}, request=mo), RateLimitError у тесті, Self-review, Task 5 Report: Промпт і клієнт Groq, Task 5 — звіт: документація тижневого бекапу (Steps 1–3), Змінені файли, Знахідки самоперевірки (+7 more)
 
 ### Community 74 - "mrsnoopy-reviewer.md"
 Cohesion: 0.29
@@ -467,52 +474,104 @@ Cohesion: 0.29
 Nodes (6): Authorization, mcpServers, supabase, headers, type, url
 
 ### Community 76 - "Phase 6 — Bonus / Loyalty Program"
-Cohesion: 0.29
-Nodes (7): Altegio Webhook Endpoint with Secret in URL, Altegio Loyalty API with Local Bonus Tables Fallback, Phase 6 — Bonus / Loyalty Program, Risk 7 — Unverified Altegio Webhook Events and Auth, Risk 3 — Loyalty API Availability, Risk — Altegio Webhook Delivery Not Guaranteed, services/altegio.py::get_loyalty_balance
+Cohesion: 0.20
+Nodes (10): Altegio Webhook Endpoint with Secret in URL, Visit-Happened Attendance Filter, Daily Altegio Reconciliation of Upcoming Records, Altegio Loyalty API with Local Bonus Tables Fallback, Phase 6 — Bonus / Loyalty Program, Risk 7 — Unverified Altegio Webhook Events and Auth, Risk 3 — Loyalty API Availability, Risk — Altegio Webhook Delivery Not Guaranteed (+2 more)
 
 ### Community 77 - "Прогрес: тижневий бекап Supabase"
 Cohesion: 0.38
 Nodes (6): Minor-знахідки (передати фінальному рев'ю), Задачі, Перевірки контролера, Прогрес: AI-консультант на живих даних салону, Прогрес: тижневий бекап Supabase, Свідомі відступи від тексту плану в Task 2 (спека старша за план)
 
 ### Community 78 - "Task 4 Report: ліміт повідомлень, лічиль…"
-Cohesion: 0.29
-Nodes (6): Self-review, Task 4 Report: ліміт повідомлень, лічильник guard-trip і стан дайджесту квоти, Змінені файли, Перевірка vacuous-асерцій форматів сум, Що реалізовано, Що тестували й результати
+Cohesion: 0.24
+Nodes (10): DEFAULT_TYPE, _owning_client (callback ownership check), handle_callback(), IDOR protection for record_id in callback_data, _owning_client(), DEFAULT_TYPE, int, Update (+2 more)
 
 ### Community 79 - "Task 5 — звіт: документація тижневого бе…"
-Cohesion: 0.29
-Nodes (6): Проблеми / сумніви, code:python (response = mock.Mock(status_code=429, headers={}, request=mo), Task 5 — звіт: документація тижневого бекапу (Steps 1–3), Знахідки самоперевірки, Розходження брифа з реальністю і як вирішено, Що змінено в `PLAN.md`
+Cohesion: 0.20
+Nodes (10): code:python (# services/test_ai_context.py), code:python (# services/ai_context.py), code:bash (git add services/ai_context.py services/test_ai_context.py), code:python (# додати в services/test_ai_context.py), code:python (# services/ai_context.py — додати до імпортів), code:bash (git add services/ai_context.py services/test_ai_context.py), code:python (# services/test_ai_guard.py), Task 1: Чиста збірка блоку контексту (+2 more)
 
 ### Community 80 - "_run_daily_tasks"
-Cohesion: 0.33
-Nodes (7): get_cron_last_run(), Позначити сповіщення як sent/failed., Дата (ISO) останнього запуску щоденної задачі з цим ключем. None, якщо ще не зап, Позначити, що щоденна задача виконана сьогодні (ISO-дата)., cron_state table, Задачі, що виконуються раз на добу (а не при кожному 10-хвилинному тику).      Д, _run_daily_tasks()
+Cohesion: 0.18
+Nodes (14): get_active_tracked_records_in_range(), get_client_by_phone(), get_cron_last_run(), mark_notification(), str, Активні записи філії в межах вікна дат (для щоденної звірки: скасовані в Altegio, Позначити сповіщення як sent/failed., Дата (ISO) останнього запуску щоденної задачі з цим ключем. None, якщо ще не зап (+6 more)
 
 ### Community 81 - "Прогрес: тижневий бекап Supabase"
 Cohesion: 0.33
 Nodes (5): Minor-знахідки (передати фінальному рев'ю), Задачі, Перевірки контролера, Прогрес: тижневий бекап Supabase, Свідомі відступи від тексту плану в Task 2 (спека старша за план)
 
 ### Community 82 - "Task 2 Report: Кеш каталогу, довідник фі…"
-Cohesion: 0.33
-Nodes (6): Self-review, Task 2 Report: Кеш каталогу, довідник філій і `for_user`, Змінені файли, Сумніви й зауваження, Тести й результати, Що реалізовано
+Cohesion: 0.25
+Nodes (7): code:bash (venv/bin/python -m unittest services.test_ai_context -v), Self-review, Task 2 Report: Кеш каталогу, довідник філій і `for_user`, Виправлення відхилень (follow-up), Змінені файли, Сумніви й зауваження, Що реалізовано
 
 ### Community 83 - "Task 7: Дайджест про вичерпану квоту о 1…"
 Cohesion: 0.33
 Nodes (5): code:python (# services/test_ai_quota_digest.py), code:python (# services/scheduler.py — додати до імпортів), code:python (if is_quota_digest_due(now, db.get_cron_last_run(GROQ_QUOTA_), code:bash (git add services/scheduler.py services/test_ai_quota_digest.), Task 7: Дайджест про вичерпану квоту о 18:30
 
 ### Community 84 - "handle_error"
-Cohesion: 0.40
-Nodes (4): handle_error(), DEFAULT_TYPE, Глобальний обробник помилок PTB.  Без нього виняток, що вилетів з будь-якого han, object
+Cohesion: 0.17
+Nodes (15): Sync Flask + async PTB; cron deliberately bypasses the event loop, ADMIN_GROUP_CHAT_ID / ADMIN_TOPIC_ID, handle_error(), DEFAULT_TYPE, Глобальний обробник помилок PTB.  Без нього виняток, що вилетів з будь-якого han, object, clear_quota_report(), Скинути накопичений дайджест після підтвердженої відправки (Task 7). (+7 more)
 
 ### Community 86 - "Q: Чому register_handlers() з'єднує Bot …"
 Cohesion: 0.50
 Nodes (3): Answer, Q: Чому register_handlers() з'єднує Bot Entrypoints & Handler Setup з 10 іншими спільнотами?, Source Nodes
 
 ### Community 87 - "AI-консультант на живих даних салону — п…"
-Cohesion: 0.50
-Nodes (3): AI-консультант на живих даних салону — план реалізації, Global Constraints, Живі перевірки після мержу (за власником)
+Cohesion: 0.27
+Nodes (10): code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:block2 (ImportError: cannot import name 'ai_context' from 'services'), code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:block4 (test_branches_and_contacts_present ... ok), GREEN (Step 4 — після реалізації), GREEN (після реалізації), RED (Step 2 — до реалізації), RED (до реалізації) (+2 more)
 
 ### Community 88 - "Task 6: Склеїти флоу в обробнику AI-чату"
 Cohesion: 0.50
 Nodes (3): code:python ("""AI-чат: все, що не кнопки меню і не команди, йде в Groq."), code:bash (git add handlers/ai_chat.py), Task 6: Склеїти флоу в обробнику AI-чату
+
+### Community 123 - "Community 123"
+Cohesion: 0.22
+Nodes (4): BaseHTTPRequestHandler, _FlakyHandler, Self-check: send_telegram_message() retries transient 503s via the Session-level, RetryTest
+
+### Community 124 - "Community 124"
+Cohesion: 0.22
+Nodes (8): code:python ("""build_dump(): усі таблиці в дампі, великі таблиці читають), code:python ("""Тижневий бекап Supabase: повний дамп таблиць одним JSON-ф), code:bash (git add services/backup.py services/test_backup.py), File Structure, Global Constraints, Self-Review, Task 2: Збірка дампа з Supabase, Тижневий бекап Supabase у Telegram — план реалізації
+
+### Community 125 - "Community 125"
+Cohesion: 0.22
+Nodes (8): 1. Напиши боту в Telegram, 3. Подивись логи Flask, ⚠️ Важливо!, ✅ Готово!, 🚀 Налаштування Webhook для Mr.Snoopy Grooming Bot, 📊 Переваги webhook над polling, Чому webhook краще за polling?, 🔍 Як перевірити що працює?
+
+### Community 126 - "Community 126"
+Cohesion: 0.28
+Nodes (9): code:python (# додати в services/test_ai_guard.py), code:python (# services/ai_guard.py — додати), code:bash (git add services/ai_guard.py services/test_ai_guard.py), code:python (# services/test_groq_client.py), code:python (# services/ai_guard.py), code:bash (git add services/ai_guard.py services/test_ai_guard.py), Task 3: Перевірка сум і посилань у відповіді, Task 4: Ліміт повідомлень, лічильник спрацювань і стан дайджесту (+1 more)
+
+### Community 127 - "Community 127"
+Cohesion: 0.25
+Nodes (8): 2. Оновити код на PythonAnywhere, 2. Перевір webhook статус, 9. Встановити webhook URL, code:bash (cd ~/MRS_elegram_bot), code:bash (cd ~/MRS_elegram_bot), code:block8 (✅ Webhook успішно встановлено!), code:bash (cd ~/MRS_elegram_bot), code:bash (cd ~/MRS_elegram_bot && python3 -c ")
+
+### Community 128 - "Community 128"
+Cohesion: 0.25
+Nodes (8): code:block10 (Ran 19 tests in 0.005s — OK), code:bash (venv/bin/python -c "), code:block12 (Ran 19 tests in 0.004s — OK), code:block6 (Ran 19 tests in 0.004s — OK), code:bash (venv/bin/python -m unittest services.test_ai_context -v), code:block8 (Ran 19 tests in 0.005s — OK), Герметичність тестів від `.env` (follow-up), Новий тест (RED → GREEN)
+
+### Community 129 - "Community 129"
+Cohesion: 0.29
+Nodes (7): code:block10 (Ran 23 tests in 0.001s), code:bash (venv/bin/python -m unittest services.test_ai_guard.QuotaStat), code:block8 (FAIL: test_reset_state_clears_all), code:bash (venv/bin/python -m unittest services.test_ai_guard -v), Перевірка мутацією (`_last_trip_alert = None` прибрано з `reset_state`), Фікс-раунд (рев'ю Task 4), Що виправлено
+
+### Community 130 - "Community 130"
+Cohesion: 0.29
+Nodes (7): code:bash (venv/bin/python -m unittest services.test_ai_quota_digest -v), code:block2 (ERROR: ... AttributeError: module 'services.scheduler' has n), code:bash (venv/bin/python -m unittest services.test_ai_quota_digest -v), code:block4 (test_due_again_next_day ... ok), GREEN, RED, TDD Evidence
+
+### Community 131 - "Community 131"
+Cohesion: 0.33
+Nodes (6): code:bash (venv/bin/python -m unittest services.test_ai_guard -v), code:block6 (Ran 15 tests in 0.000s), Fix-round (рев'ю Task 3), Нові формати сум (тепер покриті), Тести після fix-round, Що змінено
+
+### Community 132 - "Community 132"
+Cohesion: 0.40
+Nodes (5): code:bash (python set_webhook.py), 🛠️ Troubleshooting, Webhook помилка?, Бот не відповідає?, Код оновився, але бот працює зі старою версією?
+
+### Community 133 - "Community 133"
+Cohesion: 0.40
+Nodes (5): code:bash (git add .), code:bash (cd ~/MRS_elegram_bot), На Mac:, На PythonAnywhere:, 🔄 Як оновлювати бота в майбутньому?
+
+### Community 134 - "Community 134"
+Cohesion: 0.50
+Nodes (4): nearest_slots._ask_staff, _level_of_text (groomer level from free text), get_staff(), Список майстрів, доступних для онлайн-запису (опційно — лише кваліфіковані на se
+
+### Community 135 - "Community 135"
+Cohesion: 0.50
+Nodes (4): `config.py`, `.env` (локально, у git не потрапляє — `.gitignore:2 *.env`), `services/backup.py`, Що реалізовано
 
 ## Ambiguous Edges - Review These
 - `start()` → `Query memory: why register_handlers connects Bot Entrypoints community to 10 others`  [AMBIGUOUS]
@@ -527,9 +586,9 @@ Nodes (3): code:python ("""AI-чат: все, що не кнопки меню і
   PLAN.md · relation: semantically_similar_to
 
 ## Knowledge Gaps
-- **307 isolated node(s):** `type`, `url`, `Authorization`, `str`, `int` (+302 more)
+- **323 isolated node(s):** `type`, `url`, `Authorization`, `allow`, `deny` (+318 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **39 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -544,7 +603,7 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `Pet Birthday Greeting` and `Deferred Next-Visit-in-N-Weeks Estimate`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
-- **Why does `GroqClientTest` connect `Тести клієнта Groq` to `Тижневий бекап у Telegram`, `Клієнт Groq та історія`?**
-  _High betweenness centrality (0.248) - this node is a cross-community bridge._
-- **Why does `RateLimitError` connect `Тести клієнта Groq` to `Task 5 Report: Промпт і клієнт Groq`, `Task 5 — звіт: документація тижневого бе…`?**
-  _High betweenness centrality (0.232) - this node is a cross-community bridge._
+- **Why does `GroqClientTest` connect `Тести клієнта Groq` to `Дамп таблиць Supabase`, `Клієнт Groq та історія`?**
+  _High betweenness centrality (0.271) - this node is a cross-community bridge._
+- **Why does `RateLimitError` connect `Тести клієнта Groq` to `Task 5 Report: Промпт і клієнт Groq`?**
+  _High betweenness centrality (0.266) - this node is a cross-community bridge._
