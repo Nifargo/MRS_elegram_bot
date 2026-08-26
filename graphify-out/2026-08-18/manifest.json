@@ -1,0 +1,372 @@
+{
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/config.py": {
+    "mtime": 1785608550.0357888,
+    "ast_hash": "6fc57764c43b04f86610a7122928ea68",
+    "semantic_hash": "6fc57764c43b04f86610a7122928ea68"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/groq_client.py": {
+    "mtime": 1769296637.849434,
+    "ast_hash": "a0c00c8196c33a0adbc715d2021b019c",
+    "semantic_hash": "a0c00c8196c33a0adbc715d2021b019c"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/bot.py": {
+    "mtime": 1785266077.397252,
+    "ast_hash": "5f539abc6d7283e91861bbc34fdb0a16",
+    "semantic_hash": "5f539abc6d7283e91861bbc34fdb0a16"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/webhook_bot.py": {
+    "mtime": 1785266119.4018455,
+    "ast_hash": "fa95e209dc7c762ffbdefa15313a40c1",
+    "semantic_hash": "fa95e209dc7c762ffbdefa15313a40c1"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/set_webhook.py": {
+    "mtime": 1784661095.9062812,
+    "ast_hash": "7392a2e32a27c5b25d457f31b1b7c5f7",
+    "semantic_hash": "7392a2e32a27c5b25d457f31b1b7c5f7"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/wsgi.py": {
+    "mtime": 1770377257.6269906,
+    "ast_hash": "5cea69d878a4b93802b88050bb67f126",
+    "semantic_hash": "5cea69d878a4b93802b88050bb67f126"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/schema.sql": {
+    "mtime": 1784053862.6877573,
+    "ast_hash": "c3c2b08ac3c869842827751b67556925",
+    "semantic_hash": "c3c2b08ac3c869842827751b67556925"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/client.py": {
+    "mtime": 1785874281.814725,
+    "ast_hash": "3568b8a971ced25f3d68077ce6c89bbe",
+    "semantic_hash": "3568b8a971ced25f3d68077ce6c89bbe"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/002_phase3_tracked_records_slot_fields.sql": {
+    "mtime": 1784657482.594436,
+    "ast_hash": "42873ac501263b592932357a43b2e962",
+    "semantic_hash": "42873ac501263b592932357a43b2e962"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/001_phase1_altegio_company_id.sql": {
+    "mtime": 1784053856.4371693,
+    "ast_hash": "17a2fc2ea0eeaaaf167a7a46bf9549ae",
+    "semantic_hash": "17a2fc2ea0eeaaaf167a7a46bf9549ae"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/registration.py": {
+    "mtime": 1785610143.1174917,
+    "ast_hash": "1a3d19e5a0d920b6f3f007c4e02e13d0",
+    "semantic_hash": "1a3d19e5a0d920b6f3f007c4e02e13d0"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/ai_chat.py": {
+    "mtime": 1785610611.7075121,
+    "ast_hash": "7c5a7116d10db82a3244afd8009d8ddc",
+    "semantic_hash": "7c5a7116d10db82a3244afd8009d8ddc"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/booking.py": {
+    "mtime": 1787060132.7716372,
+    "ast_hash": "598d3d71a0ef33c05e55d273e455aca8",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/my_bookings.py": {
+    "mtime": 1785614216.2092965,
+    "ast_hash": "dae1596b5304d4a9d7ec1f8b9451729d",
+    "semantic_hash": "dae1596b5304d4a9d7ec1f8b9451729d"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/menu.py": {
+    "mtime": 1787058472.6206589,
+    "ast_hash": "2b66435685c1e67f8ba7c619940a31a3",
+    "semantic_hash": "2b66435685c1e67f8ba7c619940a31a3"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/pets.py": {
+    "mtime": 1785610850.4534013,
+    "ast_hash": "908eb2819c440dc89afbef965de2e132",
+    "semantic_hash": "908eb2819c440dc89afbef965de2e132"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/setup.py": {
+    "mtime": 1787058472.6210554,
+    "ast_hash": "e426b58bafbdcc8cd293b687eea6aeb6",
+    "semantic_hash": "e426b58bafbdcc8cd293b687eea6aeb6"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/common.py": {
+    "mtime": 1785610058.4057012,
+    "ast_hash": "e317566ca6d8ddbb4495d1df9a5a22e7",
+    "semantic_hash": "e317566ca6d8ddbb4495d1df9a5a22e7"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/altegio_webhook.py": {
+    "mtime": 1787060132.7726285,
+    "ast_hash": "52e0767562608e2d54a1e194477b7b92",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/altegio_sync.py": {
+    "mtime": 1784402492.7441678,
+    "ast_hash": "b643b494f97006f9b615bc03004daf70",
+    "semantic_hash": "b643b494f97006f9b615bc03004daf70"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/altegio.py": {
+    "mtime": 1785785540.5077121,
+    "ast_hash": "f46123120aec0c7bde5f5b9045a9ea88",
+    "semantic_hash": "f46123120aec0c7bde5f5b9045a9ea88"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/notifications.py": {
+    "mtime": 1787085091.4785216,
+    "ast_hash": "cbba97b7c2cb90e94e4fc80cede54555",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/scheduler.py": {
+    "mtime": 1785874355.2534478,
+    "ast_hash": "a1e56b54ecddb195b4c140dddc7cbd05",
+    "semantic_hash": "a1e56b54ecddb195b4c140dddc7cbd05"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/requirements.txt": {
+    "mtime": 1784050987.7842135,
+    "ast_hash": "69114b83f365d4118db38bb3dfed7fcf",
+    "semantic_hash": "69114b83f365d4118db38bb3dfed7fcf"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/IDEAS.md": {
+    "mtime": 1770384833.8229942,
+    "ast_hash": "054fc19f7eec7ea46aeef803e2361766",
+    "semantic_hash": "054fc19f7eec7ea46aeef803e2361766"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/runtime.txt": {
+    "mtime": 1769296919.0198054,
+    "ast_hash": "201d21046e62380ff85ba6e06b7941df",
+    "semantic_hash": "201d21046e62380ff85ba6e06b7941df"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/WEBHOOK_SETUP.md": {
+    "mtime": 1769465179.9776108,
+    "ast_hash": "5b8c1d3c74ee4cfe7d8861fecf962029",
+    "semantic_hash": "5b8c1d3c74ee4cfe7d8861fecf962029"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/PLAN.md": {
+    "mtime": 1787060132.7708733,
+    "ast_hash": "1473a316800ed4d3aaaf89179134e552",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/settings.json": {
+    "mtime": 1784750641.8274288,
+    "ast_hash": "7b2467612a69a86bc0b0f9bc65d02cab",
+    "semantic_hash": "7b2467612a69a86bc0b0f9bc65d02cab"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/rtk.rewrite.sh": {
+    "mtime": 1780946751.5016546,
+    "ast_hash": "acea8e58220793c6f979576720020380",
+    "semantic_hash": "acea8e58220793c6f979576720020380"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/rtk-suggest.sh": {
+    "mtime": 1780946751.5015578,
+    "ast_hash": "b060eda7143a64996d90afc75b090749",
+    "semantic_hash": "b060eda7143a64996d90afc75b090749"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/context-recovery.sh": {
+    "mtime": 1780946751.5007665,
+    "ast_hash": "d8d4be2f37169814e7855210ef71b784",
+    "semantic_hash": "d8d4be2f37169814e7855210ef71b784"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/read_hook.js": {
+    "mtime": 1780946751.5012958,
+    "ast_hash": "cab8564099ffe200431a5a4f407a470b",
+    "semantic_hash": "cab8564099ffe200431a5a4f407a470b"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/protect-files.sh": {
+    "mtime": 1780946751.5012145,
+    "ast_hash": "c6ce9410736ce365071d95a2f15da91e",
+    "semantic_hash": "c6ce9410736ce365071d95a2f15da91e"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/warn-large-files.sh": {
+    "mtime": 1780946751.5019627,
+    "ast_hash": "8861a56a11bf6cb1e4a958258167183a",
+    "semantic_hash": "8861a56a11bf6cb1e4a958258167183a"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/graphify-remind.sh": {
+    "mtime": 1784750585.5742102,
+    "ast_hash": "e728c42b6af9743824809bb4a30625e3",
+    "semantic_hash": "e728c42b6af9743824809bb4a30625e3"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/format-on-save.sh": {
+    "mtime": 1780946751.500941,
+    "ast_hash": "eed222c804d4f03ba8e6b3f1d33b1a46",
+    "semantic_hash": "eed222c804d4f03ba8e6b3f1d33b1a46"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/block-destructive-commands.sh": {
+    "mtime": 1785424325.747309,
+    "ast_hash": "9cc617a3afcd0e4cf86565a8ff3b2d8b",
+    "semantic_hash": "9cc617a3afcd0e4cf86565a8ff3b2d8b"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/003_phase9_booking_incomplete.sql": {
+    "mtime": 1784749059.6417937,
+    "ast_hash": "f4d09aeee7b2cf7550b62ab4ca95b65a",
+    "semantic_hash": "f4d09aeee7b2cf7550b62ab4ca95b65a"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/hooks/hooks-doc.md": {
+    "mtime": 1780946751.5010347,
+    "ast_hash": "45d365e2138b94a3170487b4d47d9304",
+    "semantic_hash": "45d365e2138b94a3170487b4d47d9304"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/004_phase10_vaccine_due_date.sql": {
+    "mtime": 1784828124.1896124,
+    "ast_hash": "eb12cb6aae4052a6d18947438d9e8201",
+    "semantic_hash": "eb12cb6aae4052a6d18947438d9e8201"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/005_phase10_vaccine_notified_flag.sql": {
+    "mtime": 1784828791.5933588,
+    "ast_hash": "44b9d045e47206b707a0fc957493c219",
+    "semantic_hash": "44b9d045e47206b707a0fc957493c219"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/error_handler.py": {
+    "mtime": 1784824093.4558604,
+    "ast_hash": "33189ba63dac78f9b8608baafb615d91",
+    "semantic_hash": "33189ba63dac78f9b8608baafb615d91"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/vaccine_sync.py": {
+    "mtime": 1785178890.4746063,
+    "ast_hash": "aedef73551e7ee3daab8c736840fcb30",
+    "semantic_hash": "aedef73551e7ee3daab8c736840fcb30"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/006_tracked_records_staff_id.sql": {
+    "mtime": 1785186020.106837,
+    "ast_hash": "38fe3625288b97fc5a5a28545976c227",
+    "semantic_hash": "38fe3625288b97fc5a5a28545976c227"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.mcp.json": {
+    "mtime": 1785260204.3742795,
+    "ast_hash": "65e732c296491d0e0dd08828fdce7709",
+    "semantic_hash": "65e732c296491d0e0dd08828fdce7709"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.claude/settings.local.json": {
+    "mtime": 1785260293.062011,
+    "ast_hash": "29455eab1a2af722631d787b2f274261",
+    "semantic_hash": "29455eab1a2af722631d787b2f274261"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/nearest_slots.py": {
+    "mtime": 1787060132.772084,
+    "ast_hash": "90136ae1aaa29dda3b47052ad0d07e50",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_notifications_retry.py": {
+    "mtime": 1785419825.2452736,
+    "ast_hash": "5be734abebb2101256f388078d6aa150",
+    "semantic_hash": "5be734abebb2101256f388078d6aa150"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/graphify-out/memory/query_20260730_135404_\u0447\u043e\u043c\u0443_register_handlers___\u0437_\u0454\u0434\u043d\u0443\u0454_bot_entrypoints.md": {
+    "mtime": 1785419644.1448798,
+    "ast_hash": "a90f4038daa906f61e1a9cd4f64b52a0",
+    "semantic_hash": "a90f4038daa906f61e1a9cd4f64b52a0"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/007_phase4_visit_notifications.sql": {
+    "mtime": 1785608550.0365598,
+    "ast_hash": "7ea2df519120254d44d86714425a2eb2",
+    "semantic_hash": "7ea2df519120254d44d86714425a2eb2"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/rating.py": {
+    "mtime": 1785783565.3491092,
+    "ast_hash": "785d42e71d9453ffd6ed8571b5f11a65",
+    "semantic_hash": "785d42e71d9453ffd6ed8571b5f11a65"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/altegio_reconcile.py": {
+    "mtime": 1785871515.6872575,
+    "ast_hash": "904e51d05c43dde633c90c02cb5d86f1",
+    "semantic_hash": "904e51d05c43dde633c90c02cb5d86f1"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_altegio_webhook.py": {
+    "mtime": 1787060132.7729273,
+    "ast_hash": "c2fc5d41ff4784080e4fdff35e914708",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_altegio_reconcile.py": {
+    "mtime": 1785871535.2676184,
+    "ast_hash": "549b24a3f6132be9548acf8bfd710472",
+    "semantic_hash": "549b24a3f6132be9548acf8bfd710472"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/db/migrations/008_phase7_rebook_promo.sql": {
+    "mtime": 1785874269.6924238,
+    "ast_hash": "9dc73f411a4dee0eff5a1eb986399ac3",
+    "semantic_hash": "9dc73f411a4dee0eff5a1eb986399ac3"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/test_rebook_promo.py": {
+    "mtime": 1785875002.9487689,
+    "ast_hash": "295057419dbb867884613c9a6f44c5e1",
+    "semantic_hash": "295057419dbb867884613c9a6f44c5e1"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/rebook_promo.py": {
+    "mtime": 1785874987.2478821,
+    "ast_hash": "c707ebc3c0d7acbb948817b04c7051a6",
+    "semantic_hash": "c707ebc3c0d7acbb948817b04c7051a6"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_rebook_promo.py": {
+    "mtime": 1785875015.7790391,
+    "ast_hash": "779aa51f9d308f7d0c1bc2c2f1d9fa04",
+    "semantic_hash": "779aa51f9d308f7d0c1bc2c2f1d9fa04"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/birthday.py": {
+    "mtime": 1785872957.0320935,
+    "ast_hash": "dbf5dbb1a558b88cc98695db25be691b",
+    "semantic_hash": "dbf5dbb1a558b88cc98695db25be691b"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/rebook_promo.py": {
+    "mtime": 1785874975.803945,
+    "ast_hash": "d80a738403d1b981091d8b88c68a5db8",
+    "semantic_hash": "d80a738403d1b981091d8b88c68a5db8"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_birthday.py": {
+    "mtime": 1785872986.0711725,
+    "ast_hash": "4261692694bb3cd302c782e0894f84fe",
+    "semantic_hash": "4261692694bb3cd302c782e0894f84fe"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/handlers/history.py": {
+    "mtime": 1787058472.620131,
+    "ast_hash": "6cd03d97bb4cc371a389e95c97f568ce",
+    "semantic_hash": "6cd03d97bb4cc371a389e95c97f568ce"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_visit_history.py": {
+    "mtime": 1787058472.6213338,
+    "ast_hash": "536fae8459a8a963f9dad518780a3cf4",
+    "semantic_hash": "536fae8459a8a963f9dad518780a3cf4"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/visit_history.py": {
+    "mtime": 1787058472.6215897,
+    "ast_hash": "b8ef6ad737e991982acff29b435be592",
+    "semantic_hash": "b8ef6ad737e991982acff29b435be592"
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/docs/superpowers/specs/2026-08-18-supabase-backup-design.md": {
+    "mtime": 1787084582.5043662,
+    "ast_hash": "7dfe168de173360833b3edd7eaadbd59",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/docs/superpowers/plans/2026-08-18-supabase-weekly-backup.md": {
+    "mtime": 1787084572.4486098,
+    "ast_hash": "965777b390b560fa57389f92701e6f03",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_notifications_document.py": {
+    "mtime": 1787085077.4099166,
+    "ast_hash": "31a20a8466d6c8e98456cdbed4a2ac9e",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.superpowers/sdd/task-1-brief.md": {
+    "mtime": 1787085005.9529653,
+    "ast_hash": "2f573dd23c57c0ad8c7a452e80848faf",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/backup.py": {
+    "mtime": 1787085555.3753352,
+    "ast_hash": "0bd09833f16e43d0f5184ac78a574336",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/services/test_backup.py": {
+    "mtime": 1787085513.7199492,
+    "ast_hash": "f369afbf5279e93d500d8aa6fa54ae9c",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.superpowers/sdd/progress.md": {
+    "mtime": 1787085429.0400321,
+    "ast_hash": "43a2bec88c7f24f675f608d83d19e970",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.superpowers/sdd/task-2-brief.md": {
+    "mtime": 1787085406.3988254,
+    "ast_hash": "fa86d32678329e42945a5890682c7a1b",
+    "semantic_hash": ""
+  },
+  "/Users/nifargo/Documents/My_projects/grooming-telegram-bot/.superpowers/sdd/task-1-report.md": {
+    "mtime": 1787085188.0447927,
+    "ast_hash": "ebf3d23e55f735909d7a3a665b3ca063",
+    "semantic_hash": ""
+  }
+}
